@@ -1,0 +1,18 @@
+local Tool = Instance.new("Tool")
+Tool.Name = "Teleport Tool"
+Tool.RequiresHandle = false
+Tool.Parent = game.Players.LocalPlayer.Backpack
+
+local function onActivated()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    local mouse = player:GetMouse()
+    local targetPos = mouse.Hit.Position -- Get click position
+    
+    -- Teleport above ground smoothly
+    character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+end
+
+Tool.Activated:Connect(onActivated)
