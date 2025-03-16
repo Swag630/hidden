@@ -5,12 +5,12 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 local button = Instance.new("TextButton")
 button.Parent = screenGui
 button.Size = UDim2.new(0, 100, 0, 50) -- Button size
-button.Position = UDim2.new(0, 30, 0.5, -25) -- Left side of the screen
-button.Text = "ENABLES COOL STUFF"
+button.Position = UDim2.new(0, 10, 0.5, -35) -- Left side of the screen
+button.Text = "(ENABLES COOL STUFF)"
 button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red color
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.Font = Enum.Font.SourceSansBold
-button.TextSize = 12
+button.TextSize = 20
 
 button.MouseButton1Click:Connect(function()
     print("Button clicked!") -- Debug message
