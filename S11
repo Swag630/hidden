@@ -1,0 +1,1815 @@
+--[[Garou Color Changer !DELETE IF NOT NEEDED!]]
+
+--[[LEFT ARM COLORS]]
+
+local char = game.Players.LocalPlayer.Character
+getgenv().LArmCol = char['Left Arm'].ChildAdded:Connect(function(pp)
+if pp.Name == 'WaterPalm' then
+for i,v in pairs(pp:WaitForChild('ConstantEmit'):GetChildren()) do
+v.Color =
+ColorSequence.new{ColorSequenceKeypoint.new(0.00, 
+Color3.fromRGB(255, 0, 0)), -- Change Color (Red, Green, Blue)
+ColorSequenceKeypoint.new(1.00, 
+Color3.fromRGB(255, 0, 0))} -- Change Color (Red, Green, Blue)
+end
+
+pp:WaitForChild('WaterTrail').Color = 
+ColorSequence.new{ColorSequenceKeypoint.new(0.00, 
+Color3.fromRGB(255, 0, 0)), -- Change Color (Red, Green, Blue)
+ColorSequenceKeypoint.new(1.00, 
+Color3.fromRGB(255, 0, 0))} -- Change Color (Red, Green, Blue)
+
+end end)
+--[[RIGHT ARM colors]]
+
+getgenv().RArmCol = char['Right Arm'].ChildAdded:Connect(function(pp)
+if pp.Name == 'WaterPalm' then
+for i,v in pairs(pp:WaitForChild('ConstantEmit'):GetChildren()) do
+v.Color =
+ColorSequence.new{ColorSequenceKeypoint.new(0.00, 
+Color3.fromRGB(255, 0, 0)), -- Change Color (Red, Green, Blue)
+ColorSequenceKeypoint.new(1.00, 
+Color3.fromRGB(255, 0, 0))} -- Change Color (Red, Green, Blue)
+end
+pp:WaitForChild('WaterTrail').Color = 
+ColorSequence.new{ColorSequenceKeypoint.new(0.00, 
+Color3.fromRGB(255, 0, 0)), -- Change Color (Red, Green, Blue) 
+ColorSequenceKeypoint.new(1.00, 
+Color3.fromRGB(255, 0, 0))} -- Change Color (Red, Green, Blue)
+
+end end)
+
+--[[END OF GAROU COLORS]]
+
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Parent = screenGui
+button.Size = UDim2.new(0, 100, 0, 50) -- Button size
+button.Position = UDim2.new(0, 20, 0.5, -35) -- Left side of the screen
+button.Text = "ENABLES COOL STUFF"
+button.BackgroundColor3 = Color3.fromRGB(125, 0, 0) -- Red color
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+
+button.MouseButton1Click:Connect(function()
+    print("Button clicked!") -- Debug message
+    -- YOUR CODE HERE
+
+
+--[[Move 1 FINISHER]]
+local animationId = 14374357351
+local soundId = 2323 -- Sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local TweenService = game:GetService("TweenService")
+-- Function to play sound
+local function playSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. soundId
+    sound.Volume = 1 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://83001379083977"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(1.4) -- Adjust animation speed
+        -- Play sound
+        playSound()
+        -- Start flying upwards using CFrame teleportation (TPS)
+        local initialPosition = humanoidRootPart.Position
+        local targetPosition = initialPosition + Vector3.new(0, 550, 0) -- Move 550 studs up
+
+        -- Smoothly move upwards by updating CFrame in small increments over time
+        local duration = 3  -- The duration to fly up (3 seconds)
+        local startTime = tick()  -- Get the starting time
+
+        -- Move smoothly over the duration
+        game:GetService("RunService").Heartbeat:Connect(function()
+            local elapsed = tick() - startTime
+            if elapsed < duration then
+                -- Update CFrame to move upwards smoothly
+                local newPosition = initialPosition + Vector3.new(0, 550 * (elapsed / duration), 0)
+                humanoidRootPart.CFrame = CFrame.new(newPosition)
+            else
+                -- Stop the movement once the target position is reached
+                -- Let the character fall naturally without forcefully setting CFrame
+                task.delay(0.1, function()
+                    -- Stop the animation
+                    Anim:Stop()
+                    -- Destroy this script to stop further updates and avoid freezing
+                    script:Destroy()
+                end)
+            end
+        end)
+    end
+end
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+
+local meshPart = Instance.new("Part")
+meshPart.Size = Vector3.new(0.5, 0.5, 0.5) 
+meshPart.Position = Vector3.new(144.84913635253906, 440.7559814453125, 28.293676376342773) -- Spawn at the specified position
+meshPart.Anchored = true
+meshPart.CanCollide = false
+meshPart.Name = "HeldMesh"
+meshPart.BrickColor = BrickColor.new("White") -- Set the mesh color to white
+meshPart.CastShadow = false 
+
+-- Add the mesh
+local mesh = Instance.new("SpecialMesh")
+mesh.Parent = meshPart
+mesh.MeshId = "rbxassetid://14255874510"
+mesh.TextureId = "rbxassetid://14255874597"
+mesh.Scale = Vector3.new(11, 11, 11) -- Adjusted to a small scale
+
+meshPart.Parent = workspace
+
+-- Adjust rotation of the mesh
+meshPart.Orientation = Vector3.new(40, -90, 20) -- Rotate mesh by 40 degrees along the X-axis
+
+-- Make the mesh disappear after 223 seconds
+delay(999923, function()
+    meshPart:Destroy()
+end)
+
+-- Change the skybox when inside the mesh (the "48" one)
+local function changeSkyboxInside()
+    local L = game:GetService("Lighting")
+    local sky = L:FindFirstChild("Clear Blue Sky")
+
+    if sky then
+        sky.CelestialBodiesShown = false
+        sky.SkyboxBk = "rbxassetid://15876597103"
+        sky.SkyboxDn = "rbxassetid://15876592775"
+        sky.SkyboxFt = "rbxassetid://15876640231"
+        sky.SkyboxLf = "rbxassetid://15876638420"
+        sky.SkyboxRt = "rbxassetid://15876595486"
+        sky.SkyboxUp = "rbxassetid://15876639348"
+    end
+end
+
+-- Change the skybox when outside the mesh (the "48" one)
+local function changeSkyboxOutside()
+    local L = game:GetService("Lighting")
+    local sky = L:FindFirstChild("Clear Blue Sky")
+
+    if sky then
+        sky.CelestialBodiesShown = false
+        sky.SkyboxBk = "rbxassetid://2762577836"
+        sky.SkyboxDn = "rbxassetid://2762577836"
+        sky.SkyboxFt = "rbxassetid://2762577836"
+        sky.SkyboxLf = "rbxassetid://2762577836"
+        sky.SkyboxRt = "rbxassetid://2762577836"
+        sky.SkyboxUp = "rbxassetid://2762577836"
+    end
+end
+
+-- Keep track of whether the player is inside or outside the mesh
+local isInside = false
+
+-- Constantly check if the player is still near the mesh
+game:GetService("RunService").Heartbeat:Connect(function()
+    local distance = (meshPart.Position - humanoidRootPart.Position).Magnitude
+
+    if distance <= 1255 and not isInside then
+        -- Player enters the mesh, change the skybox to inside version (48 one)
+        isInside = true
+        changeSkyboxInside()
+    elseif distance > 1255 and isInside then
+        -- Player leaves the mesh, change the skybox to outside version
+        isInside = false
+        changeSkyboxOutside()
+    end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Create the mesh part
+local meshPart = Instance.new("Part")
+meshPart.Size = Vector3.new(10, 1, 10)
+meshPart.Position = Vector3.new(-6656.52294921875, 4179.28759765625, -3743.246826171875)
+meshPart.Anchored = true
+meshPart.CanCollide = true
+meshPart.Name = "HeldMesh"
+meshPart.CastShadow = false
+meshPart.Parent = workspace
+
+local moonGravity = 30 -- About 1/6th of normal gravity
+local normalGravity = workspace.Gravity
+local inMoonZone = false
+
+local function updateGravity()
+    local distance = (humanoidRootPart.Position - meshPart.Position).Magnitude
+    
+    if distance <= 1500 then
+        if not inMoonZone then
+            workspace.Gravity = moonGravity
+            inMoonZone = true
+        end
+    else
+        if inMoonZone then
+            workspace.Gravity = normalGravity
+            inMoonZone = false
+        end
+    end
+end
+
+-- Continuously check the player's distance from the mesh part
+RunService.Heartbeat:Connect(updateGravity)
+
+
+-- Add the mesh
+local mesh = Instance.new("SpecialMesh")
+mesh.Parent = meshPart
+mesh.MeshId = "rbxassetid://17681882680" -- Mesh ID
+mesh.TextureId = "rbxassetid://17681882752" -- Texture ID
+mesh.Scale = Vector3.new(10.3887, 10.321, 10.397) -- Adjusted to a small scale
+
+meshPart.Parent = workspace
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Create a Part to represent a large sphere
+local sphere = Instance.new("Part")
+sphere.Shape = Enum.PartType.Ball -- Set the shape to a sphere
+sphere.Size = Vector3.new(17000, 17000, 17000) -- Make the sphere very large
+sphere.Position = Vector3.new(-6656.52294921875, 4179.28759765625, -3743.246826171875) -- Set the position
+sphere.Anchored = true -- Make sure it stays in place
+sphere.CanCollide = true -- Allow collision with the sphere
+sphere.Material = Enum.Material.SmoothPlastic -- Optional material
+sphere.Color = Color3.fromRGB(128, 128, 128) -- Set color to yellow for visibility
+sphere.Parent = workspace -- Add the sphere to the workspace
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Function to destroy all meshes and spheres on death
+local function onDeath()
+    -- Destroy all created mesh parts
+    for _, part in ipairs(workspace:GetChildren()) do
+        if part.Name == "HeldMesh" then
+            part:Destroy()
+        end
+    end
+    -- Destroy the large sphere
+    for _, part in ipairs(workspace:GetChildren()) do
+        if part:IsA("Part") and part.Shape == Enum.PartType.Ball and part.Size == Vector3.new(17000, 17000, 17000) then
+            part:Destroy()
+        end
+    end
+end
+
+-- Connect death event
+character:WaitForChild("Humanoid").Died:Connect(onDeath)
+
+-- Keep track of player death and ensure that it runs again if the player respawns
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    character:WaitForChild("Humanoid").Died:Connect(onDeath)
+end)
+
+
+--[[Move 3 FINISHER with Sound]]
+--MOVE 4 HIT
+local animationId = 13603396939
+local soundId = 2323 -- Sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function to play sound
+local function playSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. soundId
+    sound.Volume = 1 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://18170032354"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(1.2) -- Adjust animation speed
+        
+        -- Play sound
+        playSound()
+
+        -- Stop animation after 3 seconds
+        task.delay(3, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Function to expand the puddle
+local function expandPuddle()
+    -- Create the part
+    local part = Instance.new("MeshPart")
+    part.Size = Vector3.new(2, 0.2, 2)  -- Start small
+    part.Position = humanoidRootPart.Position - Vector3.new(0, 3, 0)  -- Position it below the character
+    part.Color = Color3.fromRGB(80, 0, 0)  -- Dark red color like blood
+    part.Transparency = 0.3  -- Slightly transparent
+    part.Anchored = true
+    part.CanCollide = false
+    part.Parent = workspace
+
+    -- Create a rounded mesh for the puddle effect
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.Sphere  -- Gives it a rounded shape
+    mesh.Scale = Vector3.new(1, 0.2, 1)  -- Flatten the sphere to make it wide
+    mesh.Parent = part
+
+    local tweenService = game:GetService("TweenService")
+
+    -- Phase 1: Quick expansion (5 seconds)
+    local goalSizePhase1 = Vector3.new(part.Size.X + 5, 0.2, part.Size.Z + 5)
+    local tweenInfoPhase1 = TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local sizeTweenPhase1 = tweenService:Create(part, tweenInfoPhase1, {Size = goalSizePhase1})
+    sizeTweenPhase1:Play()
+
+    -- After 5 seconds, start Phase 2 (slow expansion for 20 seconds)
+    sizeTweenPhase1.Completed:Connect(function()
+        -- Phase 2: Slow expansion (20 seconds)
+        local goalSizePhase2 = Vector3.new(part.Size.X + 5, 0.2, part.Size.Z + 5)  -- Expands by an additional 5 studs
+        local tweenInfoPhase2 = TweenInfo.new(20, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local sizeTweenPhase2 = tweenService:Create(part, tweenInfoPhase2, {Size = goalSizePhase2})
+        sizeTweenPhase2:Play()
+
+        -- After 20 seconds, make the part disappear
+        sizeTweenPhase2.Completed:Connect(function()
+            part:Destroy()
+        end)
+    end)
+end
+
+-- Function to detect animation play
+local function onAnimationPlayed(animationTrack)
+    -- Check if the animation ID is the one you want
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://12447247483" then
+        -- Only play the puddle expansion when this specific animation is played
+        expandPuddle()
+    end
+end
+
+-- Connect the animation played event
+local humanoid = character:WaitForChild("Humanoid")
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+--[[Move 3 FINISHER]]
+
+local animationId = 12447247483
+local soundId = 7305608859 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://112380819900693"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.1
+        Anim:Play()
+        Anim:AdjustSpeed(1.7)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(2.5)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+-- MOVE 4 MISS
+local animationId = 12351854556
+local soundId = 2323 -- Sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+
+-- Function to play sound
+local function playSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. soundId
+    sound.Volume = 1 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Stop all other playing animations
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Create and load new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://17141153099"
+        local Anim = animator:LoadAnimation(AnimAnim) -- Use Animator to load
+
+        Anim:Play()
+        Anim:AdjustSpeed(0) -- Freeze immediately
+
+        -- Wait until the animation length is available
+        while Anim.Length == 0 do
+            task.wait()
+        end
+
+        -- Get animation length and calculate last 0.2 seconds
+        local freezePosition = Anim.Length - 2
+        if freezePosition < 0 then
+            freezePosition = 0 -- Prevent negative values
+        end
+
+        Anim.TimePosition = freezePosition -- Jump to last 0.2 sec
+        Anim:AdjustSpeed(0) -- Freeze frame
+
+        -- Play sound
+        playSound()
+
+        -- Wait 1 second, then stop animation
+        task.delay(1, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+--[[Ultimate 1 ]]
+
+local animationId = 12460977270
+local soundId = 7305608 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://10466974800"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+--ULT 2
+local animationId = 12467789963
+local soundId = 7305659 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://14705929107"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+--ULT 3
+local animationId = 14057231976
+local soundId = 7305659 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://111810635064735"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(1.7)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(2.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Variable to keep track of cooldown
+local cooldownTime = 20
+local lastUsedTime = 0
+
+-- List of messages and their respective audio IDs (removed the unwanted message)
+local messages = {
+    {message = "Think! THINK!", audioId = "rbxassetid://2323"},
+    {message = "You're a gnat.", audioId = "rbxassetid://2323"},
+	{message = "Get up, you're not done.", audioId = "rbxassetid://2323"},
+	{message = "Maybe this time, you'll learn.", audioId = "rbxassetid://2323"},
+	{message = "Are you pulling punches?", audioId = "rbxassetid://2323"},
+	{message = "Insignificant.", audioId = "rbxassetid://2323"},
+	{message = "Your only legacy will be failure.", audioId = "rbxassetid://2323"},
+	{message = "I'll show you power.", audioId = "rbxassetid://2323"},
+	{message = "Do your worst.", audioId = "rbxassetid://2323"},
+	{message = "Recognize your superior!", audioId = "rbxassetid://2323"},
+	{message = "Did I break you?", audioId = "rbxassetid://2323"},
+	{message = "All you're testing is my patience.", audioId = "rbxassetid://2323"},
+	{message = "You are no Viltrumite.", audioId = "rbxassetid://2323"},
+	{message = "I will grind this world to dust.", audioId = "rbxassetid://2323"},
+	{message = "Be part of something bigger, or die!", audioId = "rbxassetid://2323"},
+	{message = "Stop embarrassing yourself.", audioId = "rbxassetid://2323"},
+	{message = "I'll put a hole where your face is.", audioId = "rbxassetid://2323"},
+	{message = "Wearing yourself out, aren't you?", audioId = "rbxassetid://2323"},
+	{message = "Maybe I'll toss you into the sun.", audioId = "rbxassetid://2323"},
+	{message = "Survive and I'll keep you as a pet.", audioId = "rbxassetid://2323"},
+	{message = "Pay attention, you might learn something.", audioId = "rbxassetid://2323"},
+	{message = "So much effort, for what?", audioId = "rbxassetid://2323"},
+	{message = "It's too late to surrender.", audioId = "rbxassetid://2323"},
+    {message = "This timeline isn't yours to conquer.", audioId = "rbxassetid://2323"}
+}
+
+-- Function to check nearby players' health
+local function checkNearbyPlayers()
+    -- Loop through all players
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player then
+            local otherCharacter = otherPlayer.Character
+            if otherCharacter then
+                local humanoid = otherCharacter:FindFirstChild("Humanoid")
+                -- Check if the player is below 1.7% health
+                if humanoid and (humanoid.Health / humanoid.MaxHealth) < 0.017 then
+                    -- Check distance from the player (within 20 studs)
+                    local distance = (character.HumanoidRootPart.Position - otherCharacter.HumanoidRootPart.Position).Magnitude
+                    if distance <= 20 then
+                        -- Player's health is below 1.7% and within 20 studs
+                        local currentTime = tick()
+                        if currentTime - lastUsedTime >= cooldownTime then
+                            -- Randomly pick a message from the list
+                            local randomMessageData = messages[math.random(1, #messages)]
+                            local randomMessage = randomMessageData.message
+                            local randomAudioId = randomMessageData.audioId
+                            
+                            -- Send the message to the chat for everyone
+                            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents").SayMessageRequest:FireServer(randomMessage, "All")
+                            
+                            -- Play the audio if it exists
+                            if randomAudioId then
+                                local sound = Instance.new("Sound")
+                                sound.SoundId = randomAudioId
+                                sound.Parent = character:WaitForChild("HumanoidRootPart") -- Attach to character
+                                sound.Volume = 5 -- Increase the volume to make the sound louder
+                                sound:Play()
+                                sound.Ended:Connect(function()
+                                    sound:Destroy() -- Clean up the sound after it finishes playing
+                                end)
+                            end
+                            
+                            lastUsedTime = currentTime -- Reset the cooldown timer
+                        end
+                        return
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Function to remove the script when the player dies
+local function onDeath()
+    script:Destroy() -- Destroy the whole script when the character dies
+end
+
+-- Connect to the player's character death event
+character:WaitForChild("Humanoid").Died:Connect(onDeath)
+
+-- Run the check every 1 second, but stop the loop if the player dies
+while character and character.Parent do
+    checkNearbyPlayers()
+    wait(1)
+end
+
+-- In case the player dies, the script will be destroyed by the onDeath function.
+
+
+ button:Destroy()
+
+end)
+
+
+
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local tweenService = game:GetService("TweenService")
+
+local player = players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local camera = workspace.CurrentCamera
+
+local flying = false
+local superSpeed = false
+local bodyVelocity
+local bodyGyro
+local speed = 250  -- Normal flight speed
+local superSpeedAmount = 450  -- Super flight speed
+local flyingAnimationId = "rbxassetid://17124063826"  -- The animation ID you want to play during flight
+
+local flyingAnimationTrack
+
+-- Track the state of flying toggle
+local toggleCount = 0  -- Counts how many times 'E' is pressed to cycle through the states
+
+local function startFlying()
+    if flying then return end
+    flying = true
+    
+    -- Disable gravity effect
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Parent = humanoidRootPart
+
+    -- Allow full-body rotation
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+    bodyGyro.P = 5000
+    bodyGyro.Parent = humanoidRootPart
+
+    -- Play flying animation
+    local flyingAnimation = Instance.new("Animation")
+    flyingAnimation.AnimationId = flyingAnimationId
+    flyingAnimationTrack = humanoid:LoadAnimation(flyingAnimation)
+
+    -- Disable walking and jumping while flying
+    humanoid.WalkSpeed = 0
+    humanoid.JumpPower = 0
+
+    -- Movement and rotation loop
+    runService.RenderStepped:Connect(function()
+        if flying then
+            local moveDirection = Vector3.new(0, 0, 0)
+
+            if userInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDirection = moveDirection + (camera.CFrame.LookVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDirection = moveDirection - (camera.CFrame.LookVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDirection = moveDirection - (camera.CFrame.RightVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDirection = moveDirection + (camera.CFrame.RightVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveDirection = moveDirection + Vector3.new(0, (superSpeed and superSpeedAmount or speed), 0) -- Move up
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                moveDirection = moveDirection - Vector3.new(0, (superSpeed and superSpeedAmount or speed), 0) -- Move down
+            end
+            
+            -- Apply movement
+            bodyVelocity.Velocity = moveDirection
+
+            -- Rotate full body to match camera direction
+            bodyGyro.CFrame = CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + camera.CFrame.LookVector)
+        end
+    end)
+
+    -- Play flying animation every 2 seconds
+    while flying do
+        flyingAnimationTrack:Play()
+        wait(5)  -- Wait for 2 seconds before playing the animation again
+    end
+end
+
+local function stopFlying()
+    if not flying then return end
+    flying = false
+    
+    -- Remove flight physics
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+    end
+    if bodyGyro then
+        bodyGyro:Destroy()
+    end
+
+    -- Stop flying animation
+    if flyingAnimationTrack then
+        flyingAnimationTrack:Stop()
+    end
+
+    -- Re-enable walking and jumping
+    humanoid.WalkSpeed = 16  -- Default walking speed
+    humanoid.JumpPower = 50  -- Default jump power
+end
+
+-- Toggle flight with E, toggle super speed, and stop flying after third press
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        toggleCount = toggleCount + 1  -- Increment the toggle count
+
+        if toggleCount == 1 then
+            -- First press: Start flying
+            startFlying()
+        elseif toggleCount == 2 then
+            -- Second press: Toggle super speed
+            superSpeed = not superSpeed
+        elseif toggleCount == 3 then
+            -- Third press: Stop flying
+            stopFlying()
+            toggleCount = 0  -- Reset the toggle count for the next cycle
+        end
+    end
+end)
+
+
+
+
+
+
+local player = game.Players.LocalPlayer
+	local char = player.Character
+	local Humanoid = char.Humanoid
+	local hot = player.PlayerGui:WaitForChild("Hotbar")
+	local hotbar = hot:WaitForChild("Backpack"):WaitForChild("Hotbar")
+
+	local function cloneToolName(slot, text)
+		local toolName = slot.ToolName
+		if not slot:FindFirstChild("CustomName") then
+			toolName.Visible = false
+			local clone = toolName:Clone()
+			clone.Name = "CustomName"
+			clone.Parent = slot
+			clone.Text = text
+			clone.Visible = true
+		elseif slot:FindFirstChild("CustomName") then
+			if slot:FindFirstChild("CustomName").Text ~= text then
+				toolName.Visible = false
+				slot:FindFirstChild("CustomName").Text = text
+			end
+		end
+	end
+
+	local magichealth = player.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("MagicHealth")
+	local UltLabel = magichealth:WaitForChild("TextLabel")
+	UltLabel.Visible = false
+	local UltLabel = UltLabel:Clone()
+	UltLabel.Visible = true
+	UltLabel.Name = "UltThing"
+	UltLabel.Parent = magichealth
+
+	local toolNameMap = {
+		["Flowing Water"] = "Viltrumite Barrage",
+		["Lethal Whirlwind Stream"] = "Viltrum Grab",
+		["Hunter's Grasp"] = "Family Tradition",
+		["Prey's Peril"] = "Crazy Reflexes",
+		["Water Stream Cutting Fist"] = "Truly Unstoppable Blows",
+		["The Final Hunt"] = "Not Holding Back",
+		["Rock Splitting Fist"] = "",
+		["Crushed Rock"] = "Collapsing Rush"
+	}
+
+	local function typeText(label, text, delay)
+		delay = delay or 0.05
+		local originalText = text
+		label.Text = ""
+		for i = 1, #originalText do
+			label.Text = string.sub(originalText, 1, i)
+			task.wait(delay)
+		end
+	end
+	local ultTexts = {
+		"I Hope Mark Has Prepared Himself.."
+		
+	}
+
+
+	local typedTools = {}
+
+	local function updateToolNames()
+		for _, slot in ipairs(hotbar:GetChildren()) do
+			if slot:FindFirstChild("Base") and slot.Base:FindFirstChild("ToolName") then
+				local toolNameText = slot.Base.ToolName.Text
+				local newName = toolNameMap[toolNameText]
+				if newName then
+					cloneToolName(slot.Base, newName)
+					if slot.Base:FindFirstChild("CustomName") and not typedTools[newName] then
+						typeText(slot.Base.CustomName, newName, 0.03)
+						typedTools[newName] = true
+
+
+					end
+				end
+			end
+		end
+	end
+
+	task.spawn(
+		function()
+			local currentUltIndex = 1
+
+			while true do
+				typeText(UltLabel, ultTexts[currentUltIndex], 0.05)
+				currentUltIndex = (currentUltIndex % #ultTexts) + 1
+
+				pcall(
+					function()
+					end
+				)
+
+				updateToolNames()
+				task.wait(10)
+			end
+		end
+	)
+
+	task.spawn(
+		function()
+			while task.wait(1) do
+				updateToolNames()
+			end
+		end
+	)
+
+local a = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.MagicHealth.Health.Bar
+a.ImageColor3 = Color3.fromRGB(255, 0, 0)
+
+local b = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.MagicHealth.Health.Bar.Bar
+b.ImageColor3 = Color3.fromRGB(255, 0, 0)
+
+
+
+
+
+
+
+local animationId = "rbxassetid://12273188754"
+local soundId1 = "rbxassetid://4799537772" -- Sound to play first
+local soundId2 = "rbxassetid://122061619677195" -- Sound to play second
+local soundId3 = "rbxassetid://4799540397" -- Sound to play third
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Create sound instances
+local sound1 = Instance.new("Sound")
+sound1.SoundId = soundId1
+sound1.Volume = 1
+sound1.Parent = rootPart
+
+local sound2 = Instance.new("Sound")
+sound2.SoundId = soundId2
+sound2.Volume = 1
+sound2.Parent = rootPart
+
+local sound3 = Instance.new("Sound")
+sound3.SoundId = soundId3
+sound3.Volume = 1
+sound3.Parent = rootPart
+
+local function playSoundMultipleTimes()
+    for i = 1, 7 do
+        wait(0.2)  -- Wait for 0.5 seconds
+        sound1:Play()  -- Play the first sound
+    end
+end
+
+local function playSecondSound()
+    wait(0.2)  -- Wait for a brief moment after the first sound plays
+    sound2:Play()  -- Play the second sound
+end
+
+local function playThirdSound()
+    wait(0.1)  -- Wait for a brief moment after the second sound plays
+    for i = 1, 2 do
+        wait(0.1)  -- Wait for 0.5 seconds
+        sound3:Play()  -- Play the third sound twice
+    end
+end
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == animationId then
+        -- Stop all animations
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Play new animation
+        local animInstance = Instance.new("Animation")
+        animInstance.AnimationId = "rbxassetid://18897695481"
+        local anim = humanoid:LoadAnimation(animInstance)
+        anim:Play()
+        anim:AdjustSpeed(1.7)
+
+        -- Play the first sound 3 times
+        playSoundMultipleTimes()
+
+        -- Play the second sound once
+        playSecondSound()
+
+        -- Play the third sound twice
+        playThirdSound()
+
+        -- Stop the animation after 2 seconds
+        wait(0.1)
+        anim:Stop()
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+--[[Move 1 Miss Anim]]
+
+local animationId = 12272894215
+
+
+local player = game.Players.LocalPlayer
+
+local character = player.Character or player.CharacterAdded:Wait()
+
+local humanoid = character:WaitForChild("Humanoid")
+
+
+local function onAnimationPlayed(animationTrack)
+
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+
+
+local p = game.Players.LocalPlayer
+
+local Humanoid = p.Character:WaitForChild("Humanoid")
+
+
+for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+
+    animTrack:Stop()
+
+end
+
+
+local AnimAnim = Instance.new("Animation")
+
+AnimAnim.AnimationId = "rbxassetid://your anim id here"
+
+local Anim = Humanoid:LoadAnimation(AnimAnim)
+
+
+local startTime = 0
+
+
+Anim:Play()
+
+Anim:AdjustSpeed(0.1)
+
+Anim.TimePosition = startTime
+
+Anim:AdjustSpeed(0.5) -- [[speed of the move anim]]
+
+
+    end
+
+end
+
+--[[End Of Move 1 Miss Anim]]
+
+
+
+
+--[[Move 2]]
+
+local animationId = 12296113986
+local soundId = 1843023382 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local tweenService = game:GetService("TweenService")
+
+-- Function to handle when an animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Make sure character's humanoid is not falling or grounded
+        humanoid.PlatformStand = true  -- Disable platform movement while teleporting
+
+        -- Preserve the character's current rotation (orientation)
+        local currentCFrame = rootPart.CFrame
+        local currentRotation = currentCFrame - currentCFrame.Position  -- Remove position part to keep only rotation
+
+        -- Target position (fly up by 150 studs)
+        local targetPosition = currentCFrame.Position + Vector3.new(0, 250, 0)
+
+        -- Wait for 1 second before starting the flying effect
+        wait(1)
+
+        -- Create the TweenInfo for smooth transition
+        local tweenInfo = TweenInfo.new(
+            1, -- Time it takes to "fly" up (you can adjust this for faster/slower)
+            Enum.EasingStyle.Linear, -- Smooth, linear transition
+            Enum.EasingDirection.Out, -- Ease out to make it feel like a smooth stop
+            0, -- No repeat count
+            false, -- Do not reverse
+            0 -- No delay
+        )
+
+        -- Create the tween to move the HumanoidRootPart to the target position
+        local goal = {CFrame = CFrame.new(targetPosition) * currentRotation}  -- Move upward while maintaining rotation
+        local tween = tweenService:Create(rootPart, tweenInfo, goal)
+
+        -- Play the tween (fly upwards)
+        tween:Play()
+
+        -- Wait for the tween to finish before re-enabling platform stand
+        tween.Completed:Wait()
+        
+        -- After moving up, re-enable platform stand to restore normal movement
+        humanoid.PlatformStand = false  -- Re-enable platform movement for normal controls
+
+        -- Optional: Play a sound when the fly happens
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+
+        -- Clean up the sound after it's done playing
+        delay(1.8, function()
+            sound:Destroy()
+        end)
+    end
+end
+
+-- Only listen for the local player's animation
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+--[[Move 2 Miss Anim]]
+
+local animationId = 12296882427
+
+
+local player = game.Players.LocalPlayer
+
+local character = player.Character or player.CharacterAdded:Wait()
+
+local humanoid = character:WaitForChild("Humanoid")
+
+
+local function onAnimationPlayed(animationTrack)
+
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+
+
+local p = game.Players.LocalPlayer
+
+local Humanoid = p.Character:WaitForChild("Humanoid")
+
+
+for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+
+    animTrack:Stop()
+
+end
+
+
+local AnimAnim = Instance.new("Animation")
+
+AnimAnim.AnimationId = "rbxassetid://your anim id here"
+
+local Anim = Humanoid:LoadAnimation(AnimAnim)
+
+
+local startTime = 0
+
+
+Anim:Play()
+
+Anim:AdjustSpeed(0.1)
+
+Anim.TimePosition = startTime
+
+Anim:AdjustSpeed(0.5) -- [[speed of the move anim]]
+
+
+    end
+
+end
+
+--[[End Of Move 2 Miss Anim]]
+
+
+--[[Move 3]]
+
+local animationId = 12309835105
+local soundId = 7305608859 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play the first animation
+        local firstAnim = Instance.new("Animation")
+        firstAnim.AnimationId = "rbxassetid://13532562418"
+        local firstAnimTrack = Humanoid:LoadAnimation(firstAnim)
+        
+        if not firstAnimTrack then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        firstAnimTrack:Play()
+        firstAnimTrack:AdjustSpeed(0)
+        firstAnimTrack.TimePosition = startTime
+        firstAnimTrack:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        firstAnimTrack.Stopped:Connect(function()
+            -- Create and play the second animation after the first one ends
+            local secondAnim = Instance.new("Animation")
+            secondAnim.AnimationId = "rbxassetid://16552234590"
+            local secondAnimTrack = Humanoid:LoadAnimation(secondAnim)
+            
+            if secondAnimTrack then
+                secondAnimTrack:Play()
+            end
+        end)
+        
+        delay(1.8, function()
+            firstAnimTrack:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+--[[Move 3 Miss Anim]]
+
+local animationId = 7815618175
+
+
+local player = game.Players.LocalPlayer
+
+local character = player.Character or player.CharacterAdded:Wait()
+
+local humanoid = character:WaitForChild("Humanoid")
+
+
+local function onAnimationPlayed(animationTrack)
+
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+
+
+local p = game.Players.LocalPlayer
+
+local Humanoid = p.Character:WaitForChild("Humanoid")
+
+
+for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+
+    animTrack:Stop()
+
+end
+
+
+local AnimAnim = Instance.new("Animation")
+
+AnimAnim.AnimationId = "rbxassetid://"
+
+local Anim = Humanoid:LoadAnimation(AnimAnim)
+
+
+local startTime = 
+
+
+Anim:Play()
+
+Anim:AdjustSpeed(0.1)
+
+Anim.TimePosition = startTime
+
+Anim:AdjustSpeed(1) -- [[speed of the move anim]]
+
+
+    end
+
+end
+
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Function to expand the puddle
+local function expandPuddle()
+    -- Create the part
+    local part = Instance.new("MeshPart")
+    part.Size = Vector3.new(2, 0.2, 2)  -- Start small
+    part.Position = humanoidRootPart.Position - Vector3.new(0, 3, 0)  -- Position it below the character
+    part.Color = Color3.fromRGB(80, 0, 0)  -- Dark red color like blood
+    part.Transparency = 0.3  -- Slightly transparent
+    part.Anchored = true
+    part.CanCollide = false
+    part.Parent = workspace
+
+    -- Create a rounded mesh for the puddle effect
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.Sphere  -- Gives it a rounded shape
+    mesh.Scale = Vector3.new(1, 0.2, 1)  -- Flatten the sphere to make it wide
+    mesh.Parent = part
+
+    local tweenService = game:GetService("TweenService")
+
+    -- Phase 1: Quick expansion (5 seconds)
+    local goalSizePhase1 = Vector3.new(part.Size.X + 5, 0.2, part.Size.Z + 5)
+    local tweenInfoPhase1 = TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local sizeTweenPhase1 = tweenService:Create(part, tweenInfoPhase1, {Size = goalSizePhase1})
+    sizeTweenPhase1:Play()
+
+    -- After 5 seconds, start Phase 2 (slow expansion for 20 seconds)
+    sizeTweenPhase1.Completed:Connect(function()
+        -- Phase 2: Slow expansion (20 seconds)
+        local goalSizePhase2 = Vector3.new(part.Size.X + 5, 0.2, part.Size.Z + 5)  -- Expands by an additional 5 studs
+        local tweenInfoPhase2 = TweenInfo.new(20, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local sizeTweenPhase2 = tweenService:Create(part, tweenInfoPhase2, {Size = goalSizePhase2})
+        sizeTweenPhase2:Play()
+
+        -- After 20 seconds, make the part disappear
+        sizeTweenPhase2.Completed:Connect(function()
+            part:Destroy()
+        end)
+    end)
+end
+
+-- Function to detect animation play
+local function onAnimationPlayed(animationTrack)
+    -- Check if the animation ID is the one you want
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://12447247483" then
+        -- Only play the puddle expansion when this specific animation is played
+        expandPuddle()
+    end
+end
+
+-- Connect the animation played event
+local humanoid = character:WaitForChild("Humanoid")
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+
+-- ULTIMATE
+
+local animationId = 12342141464
+local soundId = 2323 -- Sound ID for ultimate
+local decalId = 16423774222 -- Decal ID
+local decalSoundId = 104019397265738 -- Sound ID for decal appearance
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
+local playerGui = player:FindFirstChild("PlayerGui")
+
+-- Function to play a sound and let it finish playing
+local function playSound(soundId, parent)
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. soundId
+    sound.Volume = 5
+    sound.PlaybackSpeed = 1
+    sound.Looped = false
+    sound.Parent = parent or character:FindFirstChild("HumanoidRootPart") or character
+    sound:Play()
+    sound.Ended:Wait()
+    sound:Destroy()
+end
+
+-- Function to show the screen decal
+local function showScreenDecal()
+    if playerGui then
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "UltimateDecal"
+        screenGui.Parent = playerGui
+
+        local imageLabel = Instance.new("ImageLabel")
+        imageLabel.Size = UDim2.new(1, 0, 1, 0)
+        imageLabel.Position = UDim2.new(0, 0, 0, 0)
+        imageLabel.BackgroundTransparency = 1
+        imageLabel.Image = "rbxassetid://" .. decalId
+        imageLabel.Parent = screenGui
+
+        task.delay(2, function()
+            screenGui:Destroy()
+        end)
+    end
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Stop all playing animations
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Load and play new animation properly
+        local newAnim = Instance.new("Animation")
+        newAnim.AnimationId = "rbxassetid://17141153099"
+        local loadedAnim = animator:LoadAnimation(newAnim)
+        loadedAnim.Priority = Enum.AnimationPriority.Action
+        loadedAnim.Looped = false
+        loadedAnim:Play()
+        loadedAnim.TimePosition = 0 -- Ensure it plays from the start
+        loadedAnim:AdjustSpeed(1)
+
+        -- Trigger decal and sounds after 2 seconds
+        task.delay(2, function()
+            showScreenDecal()
+
+            task.spawn(function()
+                playSound(decalSoundId, character)
+            end)
+
+            task.spawn(function()
+                playSound(soundId, character)
+            end)
+        end)
+
+        -- Stop animation after 6 seconds to ensure it doesn't loop
+        task.delay(6, function()
+            loadedAnim:Stop()
+        end)
+
+        -- Chat message after 4.5 seconds
+        task.delay(4.5, function()
+            game:GetService("Chat"):Chat(character.Head, "You Should've Died At Birth.", Enum.ChatColor.Red)
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local animationId = "rbxassetid://12342141464"
+
+local function applyAura(character)
+    task.delay(4, function()
+        if not character.Parent then return end -- Ensure character still exists
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+
+        -- Remove any existing aura to prevent duplicates
+        local oldAura = humanoidRootPart:FindFirstChild("VfxAura")
+        if oldAura then
+            oldAura:Destroy()
+        end
+
+        -- Clone aura and attach it properly
+        local test = ReplicatedStorage.Emotes.VFX.VfxMods.FS.vfx.Aura.HumanoidRootPart.Torso:Clone()
+        test.Name = "VfxAura"
+        test.Parent = humanoidRootPart
+
+        -- Ensure it's properly positioned
+        test.Position = Vector3.new(0, -1.7, 0)
+
+        -- Modify the particle emitters to be red and always enabled
+        for _, child in ipairs(test:GetChildren()) do
+            if child:IsA("ParticleEmitter") then
+                child.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0)) -- Red color
+                child.Enabled = true
+            end
+        end
+
+        -- Remove the aura after 40 seconds or on death
+        local function cleanup()
+            if test and test.Parent then
+                test:Destroy()
+            end
+        end
+
+        task.delay(47, cleanup)
+        character:FindFirstChild("Humanoid").Died:Connect(cleanup)
+    end)
+end
+
+-- Function to check if the animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == animationId then
+        if player.Character then
+            applyAura(player.Character)
+        end
+    end
+end
+
+-- Connect animation play detection
+local function onCharacterAdded(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+end
+
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+player.CharacterAdded:Connect(onCharacterAdded)
+
+
+
+
+--[[Ultimate 1 ]]
+
+local animationId = 12460977270
+local soundId = 7305608 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://10466974800"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+--ULT 2
+local animationId = 12467789963
+local soundId = 7305659 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://14705929107"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+--ULT 3
+local animationId = 14057231976
+local soundId = 7305659 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://111810635064735"
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(1.7)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        delay(2.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
