@@ -1,6 +1,221 @@
 
 
 
+
+-- Define the target position
+local targetPosition = Vector3.new(6931.90185546875, 817.792724609375, -1098.38623046875)
+local activationDistance = 1255 -- Distance threshold
+
+local function changeSkyboxInside()
+    local L = game:GetService("Lighting")
+    local sky = L:FindFirstChild("Clear Blue Sky")
+
+    if sky then
+        sky.CelestialBodiesShown = false
+        sky.SkyboxBk = "rbxassetid://12867662147"
+        sky.SkyboxDn = "rbxassetid://12867662147"
+        sky.SkyboxFt = "rbxassetid://12867662147"
+        sky.SkyboxLf = "rbxassetid://12867662147"
+        sky.SkyboxRt = "rbxassetid://12867662147"
+        sky.SkyboxUp = "rbxassetid://12867662147"
+    end
+end
+
+local function changeSkyboxOutside()
+    local L = game:GetService("Lighting")
+    local sky = L:FindFirstChild("Clear Blue Sky")
+
+    if sky then
+        sky.CelestialBodiesShown = false
+        sky.SkyboxBk = "rbxassetid://2762577836"
+        sky.SkyboxDn = "rbxassetid://2762577836"
+        sky.SkyboxFt = "rbxassetid://2762577836"
+        sky.SkyboxLf = "rbxassetid://2762577836"
+        sky.SkyboxRt = "rbxassetid://2762577836"
+        sky.SkyboxUp = "rbxassetid://2762577836"
+    end
+end
+
+local isInside = false
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    local player = game.Players.LocalPlayer
+    if not player or not player.Character then return end
+    
+    local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+
+    local distance = (targetPosition - humanoidRootPart.Position).Magnitude
+
+    if distance <= activationDistance and not isInside then
+        isInside = true
+        changeSkyboxInside()
+    elseif distance > activationDistance and isInside then
+        isInside = false
+        changeSkyboxOutside()
+    end
+end)
+
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Define positions and distance thresholds
+local skyboxPosition = Vector3.new(144.849, 440.755, 28.293)
+local moonGravityPosition = Vector3.new(-6656.522, 4179.287, -3743.246)
+local skyboxDistance = 1255
+local moonGravityDistance = 1500
+
+-- Store normal and moon gravity values
+local normalGravity = workspace.Gravity
+local moonGravity = 30 -- 1/6th of normal gravity
+
+-- Skybox texture IDs
+local insideSkybox = {
+    Bk = "rbxassetid://15876597103",
+    Dn = "rbxassetid://15876592775",
+    Ft = "rbxassetid://15876640231",
+    Lf = "rbxassetid://15876638420",
+    Rt = "rbxassetid://15876595486",
+    Up = "rbxassetid://15876639348"
+}
+local outsideSkybox = {
+    Bk = "rbxassetid://2762577836",
+    Dn = "rbxassetid://2762577836",
+    Ft = "rbxassetid://2762577836",
+    Lf = "rbxassetid://2762577836",
+    Rt = "rbxassetid://2762577836",
+    Up = "rbxassetid://2762577836"
+}
+
+-- Get the skybox
+local sky = Lighting:FindFirstChild("Clear Blue Sky")
+if not sky then
+    warn("Skybox 'Clear Blue Sky' not found in Lighting!")
+    return
+end
+
+-- Function to update skybox
+local function updateSkybox(isInside)
+    local skyboxData = isInside and insideSkybox or outsideSkybox
+    sky.CelestialBodiesShown = false
+    sky.SkyboxBk = skyboxData.Bk
+    sky.SkyboxDn = skyboxData.Dn
+    sky.SkyboxFt = skyboxData.Ft
+    sky.SkyboxLf = skyboxData.Lf
+    sky.SkyboxRt = skyboxData.Rt
+    sky.SkyboxUp = skyboxData.Up
+end
+
+-- Track player state
+local isInsideSkybox = false
+local inMoonZone = false
+
+-- Create Mesh Part (Skybox Trigger)
+local skyboxMesh = Instance.new("Part")
+skyboxMesh.Size = Vector3.new(0.5, 0.5, 0.5)
+skyboxMesh.Position = skyboxPosition
+skyboxMesh.Anchored = true
+skyboxMesh.CanCollide = false
+skyboxMesh.Name = "HeldMesh"
+skyboxMesh.BrickColor = BrickColor.new("White")
+skyboxMesh.CastShadow = false
+skyboxMesh.Parent = workspace
+
+local mesh = Instance.new("SpecialMesh", skyboxMesh)
+mesh.MeshId = "rbxassetid://14255874510"
+mesh.TextureId = "rbxassetid://14255874597"
+mesh.Scale = Vector3.new(11, 11, 11)
+skyboxMesh.Orientation = Vector3.new(40, -90, 20)
+
+-- Create Mesh Part (Gravity Zone)
+local moonMesh = Instance.new("Part")
+moonMesh.Size = Vector3.new(10, 1, 10)
+moonMesh.Position = moonGravityPosition
+moonMesh.Anchored = true
+moonMesh.CanCollide = true
+moonMesh.Name = "HeldMesh"
+moonMesh.CastShadow = false
+moonMesh.Parent = workspace
+
+local moonMeshData = Instance.new("SpecialMesh", moonMesh)
+moonMeshData.MeshId = "rbxassetid://17681882680"
+moonMeshData.TextureId = "rbxassetid://17681882752"
+moonMeshData.Scale = Vector3.new(10.3887, 10.321, 10.397)
+
+-- Create Large Sphere (Moon Zone)
+local sphere = Instance.new("Part")
+sphere.Shape = Enum.PartType.Ball
+sphere.Size = Vector3.new(17000, 17000, 17000)
+sphere.Position = moonGravityPosition
+sphere.Anchored = true
+sphere.CanCollide = true
+sphere.Material = Enum.Material.SmoothPlastic
+sphere.Color = Color3.fromRGB(128, 128, 128)
+sphere.Parent = workspace
+
+-- Function to update skybox and gravity
+local function updatePlayerState()
+    if not humanoidRootPart then return end
+
+    -- Calculate distances
+    local distanceToSkybox = (humanoidRootPart.Position - skyboxMesh.Position).Magnitude
+    local distanceToMoonZone = (humanoidRootPart.Position - moonMesh.Position).Magnitude
+
+    -- Update skybox
+    local currentlyInsideSkybox = distanceToSkybox <= skyboxDistance
+    if currentlyInsideSkybox ~= isInsideSkybox then
+        isInsideSkybox = currentlyInsideSkybox
+        updateSkybox(isInsideSkybox)
+    end
+
+    -- Update gravity
+    local currentlyInMoonZone = distanceToMoonZone <= moonGravityDistance
+    if currentlyInMoonZone ~= inMoonZone then
+        workspace.Gravity = currentlyInMoonZone and moonGravity or normalGravity
+        inMoonZone = currentlyInMoonZone
+    end
+end
+
+-- Run check every frame
+RunService.Heartbeat:Connect(updatePlayerState)
+
+-- Function to clean up on player death
+local function onDeath()
+    -- Destroy all created mesh parts
+    for _, part in ipairs(workspace:GetChildren()) do
+        if part.Name == "HeldMesh" then
+            part:Destroy()
+        end
+    end
+
+    -- Destroy the large sphere
+    for _, part in ipairs(workspace:GetChildren()) do
+        if part:IsA("Part") and part.Shape == Enum.PartType.Ball and part.Size == Vector3.new(17000, 17000, 17000) then
+            part:Destroy()
+        end
+    end
+end
+
+-- Connect death event
+character:WaitForChild("Humanoid").Died:Connect(onDeath)
+
+-- Reconnect on respawn
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    character:WaitForChild("Humanoid").Died:Connect(onDeath)
+end)
+
+
+
 local player = game.Players.LocalPlayer
 	local char = player.Character
 	local Humanoid = char.Humanoid
@@ -37,10 +252,10 @@ local player = game.Players.LocalPlayer
 		["Vanishing Kick"] = "Teleportation Kick",
 		["Whirlwind Drop"] = "Portal Drop",
 		["Head First"] = "Dimensional Drop",
-		["Water Stream Cutting Fist"] = "?",
-		["The Final Hunt"] = "?",
-		["Rock Splitting Fist"] = "?",
-		["Crushed Rock"] = "?"
+		["Grand Fissure"] = "?",
+		["Twin Fangs"] = "?",
+		["Earth Splitting Strike"] = "?",
+		["Last Breath"] = "MISTER LIU"
 	}
 
 	local function typeText(label, text, delay)
@@ -53,7 +268,7 @@ local player = game.Players.LocalPlayer
 		end
 	end
 	local ultTexts = {
-		"I WON'T BUILD MY UTOPIA WITH BLOOD!”"
+		"I WON'T BUILD MY UTOPIA WITH BLOOD!"
 		
 	}
 
@@ -123,9 +338,9 @@ local locations = {
     {name = "Spot 1 (VOID)", position = Vector3.new(-2229.283447265625, 4282.67529296875, -21043.578125)},
     {name = "Spot 2 (CENTRE)", position = Vector3.new(146.4515838623047, 440.7559814453125, 23.027311325073242)},
     {name = "Spot 3 (CLIFF)", position = Vector3.new(325.9632568359375, 701.2406616210938, 446.8995056152344)},
-	{name = "Spot 4 (ONLY VS INVINCIBLE MOON)", position = Vector3.new(10200, 5.5, 9900)},
-	{name = "Spot 5 (ONLY VS INVINCIBLE DESERT)", position = Vector3.new(10200, 5.5, 9900)},
-	{name = "Spot 6 (PRIVATE DIMENSION)", position = Vector3.new(10200, 5.5, 9900)},
+	{name = "Spot 4 (ONLY VS INVINCIBLE MOON)", position = Vector3.new(-6409.9091796875, 5226.6318359375, -3481.927490234375)},
+	{name = "Spot 5 (ONLY VS INVINCIBLE DESERT)", position = Vector3.new(6931.90185546875, 817.792724609375, -1098.38623046875)},
+	{name = "Spot 6 (THE EDGE)", position = Vector3.new(285.67657470703125, 445.2362976074219, 477.21673583984375)},
 	
 }
 
@@ -185,52 +400,69 @@ end
 humanoid.AnimationPlayed:Connect(onAnimationPlayed)
 
 
-
-
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local meshID = "rbxassetid://9331634848"
-
--- Adjust this to move the first mesh (X, Y, Z)
-local offsetPosition1 = Vector3.new(0, 25, 15) -- X = left/right, Y = up/down, Z = forward/back
-
--- Adjust this to move the second mesh (X, Y, Z)
-local offsetPosition2 = Vector3.new(0, 55, 0) -- Modify these values as needed
-
 local targetAnimationID = "rbxassetid://18182425133"
+local particleAttachment = game.ReplicatedStorage.Resources.EsperAwakening.General.General.Attachment
+
+-- Mesh positions
+local offsetPosition1 = Vector3.new(0, 25, 15)  -- First mesh (in front)
+local offsetPosition2 = Vector3.new(0, 55, 0)   -- Second mesh (higher up)
+local offsetPosition3 = Vector3.new(0, -55, -410) -- Third mesh (below and -410 along Z)
 
 local function createMesh(offset)
     -- Get the player's forward direction
     local forwardDirection = humanoidRootPart.CFrame.LookVector
     
-    -- Calculate the new position based on the direction the player is facing
+    -- Calculate mesh position
     local meshPosition = humanoidRootPart.Position + (forwardDirection * offset.Z) + Vector3.new(offset.X, offset.Y, 0)
-    
-    -- Create the part that will hold the mesh
+
+    -- Create the mesh part
     local meshPart = Instance.new("Part")
-    meshPart.Size = Vector3.new(1, 1, 1) -- Keep it small since mesh scaling handles size
+    meshPart.Size = Vector3.new(1, 1, 1)
     meshPart.Position = meshPosition
     meshPart.Anchored = true
     meshPart.CanCollide = false
-    meshPart.CastShadow = false -- Disable shadows
+    meshPart.CastShadow = false
+    meshPart.Material = Enum.Material.Neon -- Neon effect
+    meshPart.Color = Color3.fromRGB(0, 255, 0) -- Bright Green
+    meshPart.Transparency = 0.2 -- Slight transparency for glow effect
     meshPart.Parent = workspace
 
-    -- Change the color to green
-    meshPart.BrickColor = BrickColor.new("Bright green")
-
-    -- Create and set the mesh on the part
+    -- Create and set the mesh
     local mesh = Instance.new("SpecialMesh")
     mesh.MeshId = meshID
-    mesh.Scale = Vector3.new(5, 5, 5) -- Set the size of the mesh
+    mesh.Scale = Vector3.new(5, 5, 5) -- Adjust size as needed
     mesh.Parent = meshPart
 
-    -- Ensure the mesh faces up (rotate 90 degrees along the X-axis)
-    meshPart.CFrame = CFrame.new(meshPosition, meshPosition + forwardDirection) * CFrame.Angles(math.rad(90), 0, 0)
+    -- Add a Glow Effect
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(0, 255, 0) -- Green glow
+    glow.Brightness = 5 -- Increase brightness for glow effect
+    glow.Range = 10 -- Adjust glow range
+    glow.Parent = meshPart
 
-    -- Make the mesh disappear after 5 seconds
+    -- Ensure the mesh faces up (rotate 90 degrees along the X-axis)
+    meshPart.CFrame = CFrame.new(meshPosition) * CFrame.Angles(math.rad(90), 0, 0)
+
+    -- Attach and activate the particle effect
+    local particles = particleAttachment:Clone()
+    particles.Parent = meshPart
+
+    -- Set particle color to green and activate
+    for _, child in ipairs(particles:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0)) -- Green particles
+            child:Emit(15)
+            child.Enabled = true
+        end
+    end
+
+    -- Remove the mesh after 5 seconds
     task.delay(5, function()
         if meshPart then
             meshPart:Destroy()
@@ -238,21 +470,162 @@ local function createMesh(offset)
     end)
 end
 
--- Detect animation playing
+-- Detect when the animation plays and spawn meshes
 local function onAnimationPlayed(track)
     if track.Animation and track.Animation.AnimationId == targetAnimationID then
-        createMesh(offsetPosition1)
+        createMesh(offsetPosition1) -- First mesh (in front)
 
-        -- Spawn another identical mesh after 2.7 seconds
+        -- Spawn second and third mesh simultaneously
         task.delay(1.4, function()
-            createMesh(offsetPosition2)
+            createMesh(offsetPosition2)  -- Second mesh (higher up)
+            createMesh(offsetPosition3)  -- Third mesh (below and -410 Z)
         end)
     end
 end
 
--- Listen for animations playing
+-- Listen for animation playing
 humanoid.Animator.AnimationPlayed:Connect(onAnimationPlayed)
 
+
+-- GUI Setup
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 170)
+frame.Position = UDim2.new(1, -270, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.Parent = screenGui
+
+-- Teleport locations
+local locations = {
+    {name = "Spot 1 (VOID)", position = Vector3.new(-2229.283, 4282.675, -21043.578)},
+    {name = "Spot 2 (CENTRE)", position = Vector3.new(146.451, 440.755, 23.027)},
+    {name = "Spot 3 (CLIFF)", position = Vector3.new(325.963, 701.240, 446.899)},
+    {name = "Spot 4 (ONLY VS INVINCIBLE MOON)", position = Vector3.new(-6409.9091796875, 5226.6318359375, -3481.927490234375)},
+    {name = "Spot 5 (ONLY VS INVINCIBLE DESERT)", position = Vector3.new(6931.901, 817.792, -1098.386)},
+    {name = "Spot 6 (THE EDGE)", position = Vector3.new(285.67657470703125, 445.2362976074219, 477.21673583984375)},
+}
+
+local particleAttachment = game.ReplicatedStorage.Resources.EsperAwakening.General.General.Attachment
+
+local function createTeleportMesh(teleportPosition, locationName)
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local spawnPosition
+    if locationName == "Spot 1 (VOID)" then
+        spawnPosition = rootPart.Position + rootPart.CFrame.LookVector * 5 -- Spawn in front of player
+    else
+        spawnPosition = rootPart.Position + rootPart.CFrame.LookVector * 5 -- Spawn in front of player
+    end
+    
+    local teleportPart = Instance.new("Part")
+    teleportPart.Size = Vector3.new(4, 4, 4)
+    teleportPart.Position = spawnPosition + Vector3.new(0, 2, 0) -- Slightly above ground
+    teleportPart.Anchored = true
+    teleportPart.CanCollide = false
+    teleportPart.Parent = game.Workspace
+    
+    -- Make it face the player
+    teleportPart.CFrame = CFrame.lookAt(teleportPart.Position, rootPart.Position)
+
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshId = "rbxassetid://9331634848"
+    mesh.Scale = Vector3.new(2, 2, 2)
+    mesh.Parent = teleportPart
+    
+    -- Set mesh properties to make it green, transparent, and neon
+    teleportPart.Color = Color3.fromRGB(0, 255, 0)  -- Green color
+    teleportPart.Material = Enum.Material.Neon
+    teleportPart.Transparency = 0.3  -- Slightly transparent
+
+    -- Attach particle effect to the mesh
+    local attachment = particleAttachment:Clone()
+    attachment.Parent = teleportPart
+    -- Ensure the particle system starts emitting
+    local particleEmitter = attachment:FindFirstChildOfClass("ParticleEmitter")
+    if particleEmitter then
+        particleEmitter:Emit(100)  -- Emit particles immediately
+    end
+
+    teleportPart.Touched:Connect(function(hit)
+        if hit.Parent == player.Character then
+            rootPart.CFrame = CFrame.new(teleportPosition)
+            teleportPart:Destroy()
+
+            -- Check if the teleportation is for the VOID portal and teleport back to the center
+            if locationName == "Spot 1 (VOID)" then
+                task.delay(2, function()
+                    -- Spawn the new mesh below the player
+                    local belowMesh = Instance.new("Part")
+                    belowMesh.Size = Vector3.new(4, 4, 4)
+                    belowMesh.Position = rootPart.Position - Vector3.new(0, 5, 0) -- Spawn below the player
+                    belowMesh.Anchored = true
+                    belowMesh.CanCollide = false
+                    belowMesh.Parent = game.Workspace
+                    
+                    local belowMeshInstance = Instance.new("SpecialMesh")
+                    belowMeshInstance.MeshId = "rbxassetid://9331634848"
+                    belowMeshInstance.Scale = Vector3.new(2, 2, 2)
+                    belowMeshInstance.Parent = belowMesh
+                    
+                    -- Set the properties for the new mesh to make it green, transparent, and neon
+                    belowMesh.Color = Color3.fromRGB(0, 255, 0)  -- Green color
+                    belowMesh.Material = Enum.Material.Neon
+                    belowMesh.Transparency = 0.3  -- Slightly transparent
+                    
+                    -- Attach particle effect to the mesh
+                    local belowAttachment = particleAttachment:Clone()
+                    belowAttachment.Parent = belowMesh
+                    -- Ensure the particle system starts emitting
+                    local belowParticleEmitter = belowAttachment:FindFirstChildOfClass("ParticleEmitter")
+                    if belowParticleEmitter then
+                        belowParticleEmitter:Emit(100)  -- Emit particles immediately
+                    end
+                    
+                    -- Teleport player back to the Centre (Spot 2)
+                    rootPart.CFrame = CFrame.new(locations[2].position)  -- Teleport to the Centre (Spot 2)
+
+                    -- Destroy the below mesh after 2 seconds
+                    task.delay(2, function()
+                        if belowMesh then
+                            belowMesh:Destroy()
+                        end
+                    end)
+                end)
+            end
+        end
+    end)
+
+    task.delay(5, function()
+        if teleportPart then
+            teleportPart:Destroy()
+        end
+    end)
+end
+
+local function createButton(text, index, teleportPosition, locationName)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 30)
+    button.Position = UDim2.new(0, 0, 0, (index - 1) * 30)
+    button.Text = text
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    button.Parent = frame
+    
+    button.MouseButton1Click:Connect(function()
+        createTeleportMesh(teleportPosition, locationName)
+    end)
+end
+
+for i, location in ipairs(locations) do
+    createButton(location.name, i, location.position, location.name)
+end
 
 
 
@@ -264,50 +637,66 @@ local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 local meshID = "rbxassetid://9331634848"
-
--- Adjust this to move the first mesh (X, Y, Z)
-local offsetPosition1 = Vector3.new(0, 15, 20) -- X = left/right, Y = up/down, Z = forward/back
-
--- Adjust this to move the second mesh (X, Y, Z)
-local offsetPosition2 = Vector3.new(0, -410, 0) -- Modify these values as needed
-
 local targetAnimationID = "rbxassetid://17799224866"
+local particleAttachment = game.ReplicatedStorage.Resources.EsperAwakening.General.General.Attachment
+
+-- Mesh positions
+local offsetPosition1 = Vector3.new(0, 15, 20)  -- First mesh (in front)
+local offsetPosition2 = Vector3.new(0, -410, 0)  -- Second mesh (higher up)
 
 local function createMesh(offset, shouldFaceUp)
     -- Get the player's forward direction
     local forwardDirection = humanoidRootPart.CFrame.LookVector
     
-    -- Calculate the new position based on the direction the player is facing
+    -- Calculate the mesh position based on player direction
     local meshPosition = humanoidRootPart.Position + (forwardDirection * offset.Z) + Vector3.new(offset.X, offset.Y, 0)
-    
-    -- Create the part that will hold the mesh
+
+    -- Create the mesh part
     local meshPart = Instance.new("Part")
-    meshPart.Size = Vector3.new(1, 1, 1) -- Keep it small since mesh scaling handles size
+    meshPart.Size = Vector3.new(1, 1, 1)
     meshPart.Position = meshPosition
     meshPart.Anchored = true
     meshPart.CanCollide = false
-    meshPart.CastShadow = false -- Disable shadows
+    meshPart.CastShadow = false
+    meshPart.Material = Enum.Material.Neon -- Neon effect
+    meshPart.Color = Color3.fromRGB(0, 255, 0) -- Bright Green
+    meshPart.Transparency = 0.2 -- Slight transparency for glow effect
     meshPart.Parent = workspace
 
-    -- Change the color to green
-    meshPart.BrickColor = BrickColor.new("Bright green")
-
-    -- Create and set the mesh on the part
+    -- Create and set the mesh
     local mesh = Instance.new("SpecialMesh")
     mesh.MeshId = meshID
-    mesh.Scale = Vector3.new(5, 5, 5) -- Set the size of the mesh
+    mesh.Scale = Vector3.new(5, 5, 5) -- Adjust size as needed
     mesh.Parent = meshPart
 
-    -- Adjust the rotation
+    -- Add a Glow Effect
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(0, 255, 0) -- Green glow
+    glow.Brightness = 5 -- Increase brightness for glow effect
+    glow.Range = 10 -- Adjust glow range
+    glow.Parent = meshPart
+
+    -- Adjust rotation
     if shouldFaceUp then
-        -- Make it face directly up
         meshPart.CFrame = CFrame.new(meshPosition) * CFrame.Angles(math.rad(-90), 0, 0)
     else
-        -- Keep the original forward-facing mesh
         meshPart.CFrame = CFrame.new(meshPosition, meshPosition + forwardDirection)
     end
 
-    -- Make the mesh disappear after 5 seconds
+    -- Attach and activate the particle effect
+    local particles = particleAttachment:Clone()
+    particles.Parent = meshPart
+
+    -- Set particle color to green and activate
+    for _, child in ipairs(particles:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0)) -- Green particles
+            child:Emit(15)
+            child.Enabled = true
+        end
+    end
+
+    -- Remove the mesh after 5 seconds
     task.delay(5, function()
         if meshPart then
             meshPart:Destroy()
@@ -315,17 +704,171 @@ local function createMesh(offset, shouldFaceUp)
     end)
 end
 
--- Detect animation playing
+-- Detect when the animation plays and spawn meshes
 local function onAnimationPlayed(track)
     if track.Animation and track.Animation.AnimationId == targetAnimationID then
-        createMesh(offsetPosition1, false) -- First mesh faces forward
-
-        -- Spawn another identical mesh after 2.4 seconds, facing up
+        createMesh(offsetPosition1, false) -- First mesh (in front)
+        
+        -- Spawn second mesh after 2.4 seconds (higher up)
         task.delay(2.4, function()
-            createMesh(offsetPosition2, true) -- Second mesh faces up
+            createMesh(offsetPosition2, true)
         end)
     end
 end
 
--- Listen for animations playing
+-- Listen for animation playing
 humanoid.Animator.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+------teleport
+
+
+
+
+
+
+
+-- No animation-based teleportation here anymore, teleport happens immediately when a button is clicked
+
+local function createFloor(basePosition, width, height)
+    -- Create the base floor part (Sand)
+    local floor = Instance.new("Part")
+    floor.Size = Vector3.new(width, 10, width)  -- 1500 studs wide, 10 studs tall (flatter)
+    floor.Position = basePosition  -- Position it at the base position
+    floor.Anchored = true
+    floor.Material = Enum.Material.Sand  -- Same material as the hills
+    floor.Color = Color3.fromRGB(255, 223, 153)  -- Sand-like color (light yellow)
+    floor.CanCollide = true  -- Enable collision
+    floor.Parent = workspace
+
+    -- Make the floor despawn after 10 seconds
+    game:GetService("Debris"):AddItem(floor, 56565610)
+
+    print("Floor created at:", floor.Position)
+end
+
+local function createHill(x, z, basePosition, maxWidth, maxHeight)
+    -- Create a large hill (sphere) at the specified position with the max width and height
+    local hill = Instance.new("Part")
+    hill.Shape = Enum.PartType.Ball  -- Set the part shape to Sphere
+    hill.Size = Vector3.new(maxWidth, maxHeight, maxWidth)  -- Use constant maxWidth and maxHeight
+    hill.Position = Vector3.new(x, basePosition.Y + maxHeight / 2, z)  -- Position it in the ground
+    hill.Anchored = true
+    hill.Material = Enum.Material.Sand  -- Same material as the base part
+    hill.Color = Color3.fromRGB(255, 223, 153)  -- Same color as the base part
+    hill.CanCollide = true  -- Enable collision
+    hill.Parent = workspace
+
+    -- Make the hill despawn after 10 seconds
+    game:GetService("Debris"):AddItem(hill, 9999999)
+
+    print("Hill created at:", hill.Position, "with size:", hill.Size)
+end
+
+local basePosition = Vector3.new(8184.8623046875, 299.5125, 128.2978515625)  -- Starting position of the base part
+local maxWidth = 500  -- Max width of the hill at the outermost points
+local maxHeight = 520  -- Max height of the hill at the outermost points
+
+-- Create the larger floor part (1500 studs wide)
+local largerFloorPosition = Vector3.new(basePosition.X, basePosition.Y - 30, basePosition.Z)  -- Position it below the original floor
+createFloor(largerFloorPosition, 6500, 20)
+
+-- Create the original floor part
+createFloor(basePosition, 3200, 300)
+
+-- Define fixed positions for 20 hills (in a grid pattern)
+local startX = basePosition.X - 2000
+local startZ = basePosition.Z - 2000
+local spacing = 250  -- Distance between each hill
+
+-- Create 20 hills in a grid pattern (5 rows of 4 hills)
+for row = 0, 8 do
+    for col = 0, 6 do
+        local xPos = startX + (col * spacing)
+        local zPos = startZ + (row * spacing)
+        createHill(xPos, zPos, basePosition, maxWidth, maxHeight)  -- Create a hill at the defined position
+    end
+end
+
+
+
+--[[Move 3]]
+local animationId = 17838006839
+local soundId = 1 -- Replace with your sound asset ID
+local meshId = 9331634848 -- Mesh asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Ensure character has PrimaryPart set (usually HumanoidRootPart)
+if not character.PrimaryPart then
+    character:SetPrimaryPartCFrame(character:WaitForChild("HumanoidRootPart").CFrame)
+end
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        
+        -- Create and play a new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://18896232119"
+        local Anim = humanoid:LoadAnimation(AnimAnim)
+        
+        if not Anim then return end -- Ensure animation loads
+        
+        local startTime = 0.3
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = startTime
+        Anim:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        sound:Play()
+        
+        -- Spawn the mesh in front of the player
+        local mesh = Instance.new("MeshPart")
+        mesh.MeshId = "rbxassetid://" .. meshId
+        mesh.Size = Vector3.new(1, 1, 1) -- Adjust size as needed
+        mesh.Anchored = true
+        mesh.CanCollide = false
+
+        -- Position the mesh in front of the player
+        local characterPosition = character.PrimaryPart.Position
+        local lookDirection = character.PrimaryPart.CFrame.LookVector
+        local spawnPosition = characterPosition + (lookDirection * 5) -- Spawn 5 studs in front of the character
+        
+        print("Mesh spawn position: ", spawnPosition)  -- Debugging line to check spawn position
+
+        mesh.Position = spawnPosition
+        mesh.Parent = game.Workspace
+        
+        -- Clean up the mesh after 5 seconds
+        delay(5, function()
+            mesh:Destroy()
+        end)
+        
+        -- Clean up after animation and sound
+        delay(1.8, function()
+            Anim:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
