@@ -1,0 +1,3471 @@
+
+-- Create GUI
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 233, 0, 180)  -- Adjust size for 3 buttons
+frame.Position = UDim2.new(0, 10, 0.5, -80)  -- Positioned on the left side
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- Black background
+frame.Parent = screenGui
+
+-- Close Button (X)
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -45, 0, 5.5)  -- Top-right corner
+closeButton.Text = "X"
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red color
+closeButton.Parent = frame
+
+-- Button 1 (Dodge 1)
+local button1 = Instance.new("TextButton")
+button1.Size = UDim2.new(0, 210, 0, 40)
+button1.Position = UDim2.new(0, 10, 0, 30)
+button1.Text = "Dodge 1 (CLICK ALL DODGE BUTTONS)"
+button1.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Green color
+button1.Parent = frame
+
+-- Button 2 (Dodge 2)
+local button2 = Instance.new("TextButton")
+button2.Size = UDim2.new(0, 210, 0, 40)
+button2.Position = UDim2.new(0, 10, 0, 80)
+button2.Text = "Dodge 2 (CLICK ALL DODGE BUTTONS)"
+button2.BackgroundColor3 = Color3.fromRGB(0, 0, 255)  -- Blue color
+button2.Parent = frame
+
+-- Button 3 (Dodge 3)
+local button3 = Instance.new("TextButton")
+button3.Size = UDim2.new(0, 210, 0, 40)
+button3.Position = UDim2.new(0, 10, 0, 130)
+button3.Text = "Dodge 3 (CLICK ALL DODGE BUTTONS)"
+button3.BackgroundColor3 = Color3.fromRGB(255, 165, 0)  -- Orange color
+button3.Parent = frame
+
+-- Function to activate Dodge 1 and destroy the button
+local function activateDodge1()
+   local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://10468665991"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.15  -- Fast sliding effect
+local returnTime = 0.15  -- Fast return
+local teleportCooldown = 3  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 1 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+------------CONSECUTIVE PUNCHES
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 12  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://10466974800"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 3  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.1)  -- Stay there for 1 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+---------SHOVE
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 10  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://10471336737"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30  -- Fast sliding effect
+local returnTime = 0.30  -- Fast return
+local teleportCooldown = 3  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 1 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+---------UPPERCUT
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 10  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12510170988"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30  -- Fast sliding effect
+local returnTime = 0.30  -- Fast return
+local teleportCooldown = 3  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 1 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+-----------TABLE FLIP
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 100  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://11365563255"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 2  -- Fast sliding effect
+local returnTime = 1  -- Fast return
+local teleportCooldown = 10  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 115 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(5)  -- Stay there for 1 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+
+
+------SERIOUS PUNCH
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 100  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12983333733"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 2  -- Fast sliding effect
+local returnTime = 1  -- Fast return
+local teleportCooldown = 10  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 75 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(6)  -- Stay there for 5 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--OMNI DIRECTIONAL PUNCH
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 30  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13927612951"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30  -- Fast sliding effect
+local returnTime = 0.55  -- Fast return
+local teleportCooldown = 10  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(2)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+--FLOWING WATER
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12272894215"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 5  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.6)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--LETHAL WHIRLWIND STREAM
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 8  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12296882427"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 5  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--HUNTERS GRASP
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 10  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12307656616"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 5  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--PREYS PERIL
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 10  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12351854556"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.60  -- Fast return
+local teleportCooldown = 5  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--GAROU ULT
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 50  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12342141464"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.60  -- Fast return
+local teleportCooldown = 10  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(destination, playAnimation)
+    local goal = {CFrame = destination}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away to (999, 999, 999) and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    -- Store original position to return
+    local originalPosition = humanoidRootPart.CFrame
+
+    local destination = CFrame.new(200, -40, 200)  -- Teleport to (999, 999, 999)
+
+    teleportWithFade(destination, true)  -- Teleport away and play animation once
+    task.wait(6)  -- Stay there for 5 seconds
+    teleportWithFade(originalPosition, false)  -- Slide back to original position without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+--WATER STREAM CUTTING FIST
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12460977270"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.35  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 5  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--THE FINAL HUNT
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12463072679"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.15  -- Fast sliding effect
+local returnTime = 0.30  -- Fast return
+local teleportCooldown = 7  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--ROCK SPLITING FIST
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14057231976"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.35  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 7  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.2)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--CRUSHED ROCK
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 55  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13630786846"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.30  -- Fast return
+local teleportCooldown = 7  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 35 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.5)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--MACHINE GUN BLOWS
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12534735382"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.5)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+--IGNITION BURST
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://12502664044"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.5)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+    -- game.ReplicatedStorage:Fire("Dodge 1 executed")
+    button1:Destroy()  -- Destroy the button when activated
+end
+
+-- Function to activate Dodge 2 and destroy the button
+local function activateDodge2()
+  --FLASH STRIKE
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 55  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13309500827"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 30 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+
+
+--WHIRLWIND KICK
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 25  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13294790250"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 20 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--SCATTER
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 45  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13362587853"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 70 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(3)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--EXPLOSIVE SHURIKEN
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 45  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://13501296372"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--homerun
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14004235777"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--HOMERUN MISS
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14003607057"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+--BEATDOWN
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14046756619"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--GRAND SLAM DOWN
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14967219354"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--GRAND SLAM UP
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14299135500"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--FOUL BALL
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14351441234"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--FOUL BALL HIT
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://14705929107"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--QUICK SLICE
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://15290930205"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 45 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(2)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--ATMOS CLEAVE
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 25  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://15145462680"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 20 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+--PINPOINT CUT
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 25  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://15295895753"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 20 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+     -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--split second counter
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 15  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://15311685628"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--WINDSTORM FURY
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 25  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://16515850153"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 25 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--STONE COFFIN
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 35  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://16431491215"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 20 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--EXPLOSIVE PUSH
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://16597322398"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.45  -- Fast sliding effect
+local returnTime = 0.45  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 20 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.7)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+    -- game.ReplicatedStorage:Fire("Dodge 2 executed")
+    button2:Destroy()  -- Destroy the button when activated
+end
+
+-- Function to activate Dodge 3 and destroy the button
+local function activateDodge3()
+    --BULLET BARRAGE
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://17799224866"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.20  -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+--VANISHING KICK
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://17838006839"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30 -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(0.8)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--WHIRLWIND KICK
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://17857788598"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30 -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 30 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1.2)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+--HEAD FIRST 
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 20  -- How close the animation must be to trigger teleport
+local animationIdToDetect = "rbxassetid://18179181663"  -- Animation that triggers the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30 -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 4  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+      -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if the animation is being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation.AnimationId == animationIdToDetect then
+                        -- Check distance
+                        if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                            teleportAwayAndBack()
+                            return  -- Stop checking after first detection
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local tweenService = game:GetService("TweenService")
+
+local detectionRadius = 8  -- How close the animation must be to trigger teleport
+local animationIdsToDetect = {
+    "rbxassetid://13295919399",
+    "rbxassetid://13532604085",
+    "rbxassetid://10469639222",
+    "rbxassetid://13378751717",
+    "rbxassetid://14001963401",
+    "rbxassetid://15240176873",
+    "rbxassetid://16515448089",
+	"rbxassetid://17889471098"
+}  -- List of animation IDs that trigger the teleport
+local dodgeAnimationId = "rbxassetid://110694817344709"  -- Animation to play when dodging
+local slideTime = 0.30 -- Fast sliding effect
+local returnTime = 0.40  -- Fast return
+local teleportCooldown = 0.9  -- Cooldown to prevent multiple triggers
+local lastTeleport = 0  -- Stores the last teleport time
+local dodgeCost = 5  -- Each dodge costs 5%
+
+-- Load dodge animation
+local dodgeAnim = Instance.new("Animation")
+dodgeAnim.AnimationId = dodgeAnimationId
+local dodgeTrack = humanoid:LoadAnimation(dodgeAnim)
+
+-- Function to smoothly teleport with a quick fade effect
+local function teleportWithFade(offset, playAnimation)
+    local goal = {CFrame = humanoidRootPart.CFrame + offset}
+    local tweenInfo = TweenInfo.new(slideTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+    
+    if playAnimation and not dodgeTrack.IsPlaying then  -- Play only once when dodging
+        dodgeTrack:Play()
+    end
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Function to teleport away and back, with bar cost
+local function teleportAwayAndBack()
+    if tick() - lastTeleport < teleportCooldown then return end  -- Prevents spam
+    if _G.ReduceDodgeBar then
+        local dodgeBarValue = _G.ReduceDodgeBar(dodgeCost)  -- Deduct 5%
+        if dodgeBarValue and dodgeBarValue <= 0 then return end  -- Stop if bar is empty
+    end
+    
+    lastTeleport = tick()  -- Update last teleport time
+
+    local direction = math.random(1, 2) == 1 and -1 or 1  -- Randomly choose left (-1) or right (1)
+    local slideOffset = humanoidRootPart.CFrame.RightVector * 15 * direction  -- Move 15 studs left or right
+
+    teleportWithFade(slideOffset, true)  -- Slide away and play animation once
+    task.wait(1)  -- Stay there for 5 second
+    
+	  -- Slide back without playing animation
+
+    -- Stop the animation when returning
+    if dodgeTrack.IsPlaying then
+        dodgeTrack:Stop()  -- Stop the dodge animation when returning
+    end
+end
+
+-- Detect when animations play
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local otherRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if otherHumanoid and otherRootPart then
+                -- Check if any of the animations in the list are being played
+                for _, track in ipairs(otherHumanoid:GetPlayingAnimationTracks()) do
+                    for _, animationId in ipairs(animationIdsToDetect) do
+                        if track.Animation.AnimationId == animationId then
+                            -- Check distance
+                            if (humanoidRootPart.Position - otherRootPart.Position).Magnitude <= detectionRadius then
+                                teleportAwayAndBack()
+                                return  -- Stop checking after first detection
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+    -- game.ReplicatedStorage:Fire("Dodge 3 executed")
+    button3:Destroy()  -- Destroy the button when activated
+end
+
+-- Function to close the GUI
+local function closeGui()
+    screenGui:Destroy()
+end
+
+-- Connect button actions
+button1.MouseButton1Click:Connect(activateDodge1)
+button2.MouseButton1Click:Connect(activateDodge2)
+button3.MouseButton1Click:Connect(activateDodge3)
+closeButton.MouseButton1Click:Connect(closeGui)
+
+
+
