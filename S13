@@ -1,0 +1,132 @@
+
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local tweenService = game:GetService("TweenService")
+
+local player = players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+local camera = workspace.CurrentCamera
+
+local flying = false
+local superSpeed = false
+local bodyVelocity
+local bodyGyro
+local speed = 250  -- Normal flight speed
+local superSpeedAmount = 450  -- Super flight speed
+local flyingAnimationId = "rbxassetid://17124063826"  -- The animation ID you want to play during flight
+
+local flyingAnimationTrack
+
+-- Track the state of flying toggle
+local toggleCount = 0  -- Counts how many times 'E' is pressed to cycle through the states
+
+local function startFlying()
+    if flying then return end
+    flying = true
+    
+    -- Disable gravity effect
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Parent = humanoidRootPart
+
+    -- Allow full-body rotation
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+    bodyGyro.P = 5000
+    bodyGyro.Parent = humanoidRootPart
+
+    -- Play flying animation
+    local flyingAnimation = Instance.new("Animation")
+    flyingAnimation.AnimationId = flyingAnimationId
+    flyingAnimationTrack = humanoid:LoadAnimation(flyingAnimation)
+
+    -- Disable walking and jumping while flying
+    humanoid.WalkSpeed = 0
+    humanoid.JumpPower = 0
+
+    -- Movement and rotation loop
+    runService.RenderStepped:Connect(function()
+        if flying then
+            local moveDirection = Vector3.new(0, 0, 0)
+
+            if userInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDirection = moveDirection + (camera.CFrame.LookVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDirection = moveDirection - (camera.CFrame.LookVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDirection = moveDirection - (camera.CFrame.RightVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDirection = moveDirection + (camera.CFrame.RightVector * (superSpeed and superSpeedAmount or speed))
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+                moveDirection = moveDirection + Vector3.new(0, (superSpeed and superSpeedAmount or speed), 0) -- Move up
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                moveDirection = moveDirection - Vector3.new(0, (superSpeed and superSpeedAmount or speed), 0) -- Move down
+            end
+            
+            -- Apply movement
+            bodyVelocity.Velocity = moveDirection
+
+            -- Rotate full body to match camera direction
+            bodyGyro.CFrame = CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + camera.CFrame.LookVector)
+        end
+    end)
+
+    -- Play flying animation every 2 seconds
+    while flying do
+        flyingAnimationTrack:Play()
+        wait(5)  -- Wait for 2 seconds before playing the animation again
+    end
+end
+
+local function stopFlying()
+    if not flying then return end
+    flying = false
+    
+    -- Remove flight physics
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+    end
+    if bodyGyro then
+        bodyGyro:Destroy()
+    end
+
+    -- Stop flying animation
+    if flyingAnimationTrack then
+        flyingAnimationTrack:Stop()
+    end
+
+    -- Re-enable walking and jumping
+    humanoid.WalkSpeed = 16  -- Default walking speed
+    humanoid.JumpPower = 50  -- Default jump power
+end
+
+-- Toggle flight with E, toggle super speed, and stop flying after third press
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        toggleCount = toggleCount + 1  -- Increment the toggle count
+
+        if toggleCount == 1 then
+            -- First press: Start flying
+            startFlying()
+        elseif toggleCount == 2 then
+            -- Second press: Toggle super speed
+            superSpeed = not superSpeed
+        elseif toggleCount == 3 then
+            -- Third press: Stop flying
+            stopFlying()
+            toggleCount = 0  -- Reset the toggle count for the next cycle
+        end
+    end
+end)
+
+
+
