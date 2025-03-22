@@ -1,0 +1,60 @@
+
+local userInputService = game:GetService("UserInputService")
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local mouse = localPlayer:GetMouse()
+local runService = game:GetService("RunService")
+
+local lockedTarget = nil
+
+-- Function to toggle lock-on state
+local function toggleLockOn()
+    if lockedTarget then
+        lockedTarget = nil  -- Unlock target if already locked
+    else
+        local target = mouse.Target -- Get the object the mouse is hovering over
+        if target and target.Parent then
+            local targetPlayer = players:GetPlayerFromCharacter(target.Parent) -- Check if it's a player
+            if targetPlayer and targetPlayer ~= localPlayer then
+                lockedTarget = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            else
+                lockedTarget = nil
+            end
+        end
+    end
+end
+
+-- Lock-on trigger via 'L' key or middle mouse button (scroll wheel click)
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.L or input.UserInputType == Enum.UserInputType.MouseButton2 then
+            toggleLockOn()
+        end
+    end
+end)
+
+-- Update the camera to always face the locked target
+runService.RenderStepped:Connect(function()
+    if lockedTarget and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local camera = workspace.CurrentCamera
+        camera.CFrame = CFrame.new(camera.CFrame.Position, lockedTarget.Position) -- Face target
+    end
+end)
+
+-- Unlock the target when the player dies or respawns
+local function onCharacterAdded(character)
+    lockedTarget = nil  -- Unlock the target immediately after respawn
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        lockedTarget = nil  -- Unlock target when the player dies
+    end)
+end
+
+-- Connect to character added event
+localPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- If the player is already in the game, reset the lock-on state
+if localPlayer.Character then
+    onCharacterAdded(localPlayer.Character)
+end
+
