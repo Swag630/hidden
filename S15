@@ -1,0 +1,49 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local teleporting = false
+local teleportPosition
+local animationId = "rbxassetid://11343250001" -- Replace with your base animation
+
+-- Create the ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create the toggle button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 250, 0, 50)
+button.Position = UDim2.new(0.47, -75, 0.8, 0)
+button.Text = "ENABLE WHEN DEATH COUNTER TRIGGERED"
+button.Parent = screenGui
+
+-- Function to start loop teleporting
+local function startTeleporting()
+    teleporting = true
+    teleportPosition = humanoidRootPart.Position -- Store the position
+    local endTime = tick() + 7 -- Set teleport duration (6-7 seconds)
+    while teleporting and tick() < endTime do
+        humanoidRootPart.CFrame = CFrame.new(teleportPosition)
+        wait(0.0001) -- Adjust timing if needed
+    end
+    teleporting = false
+end
+
+-- Detect animation playback
+humanoid.AnimationPlayed:Connect(function(animationTrack)
+    if animationTrack.Animation.AnimationId == animationId then
+        startTeleporting()
+    end
+end)
+
+-- Function to toggle teleporting manually
+local function toggleTeleport()
+    teleporting = not teleporting
+    if teleporting then
+        startTeleporting()
+    else
+        button.Text = "ENABLE WHEN DEATH COUNTER TRIGGERED" 
+    end
+end
+
+button.MouseButton1Click:Connect(toggleTeleport) 
