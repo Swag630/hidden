@@ -1,0 +1,1705 @@
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = gui
+textLabel.Text = "RESET TWICE, THEN PRESS E TO SWITCH MOVESETS ON DIO!"
+textLabel.Font = Enum.Font.Arcade -- Uses Roblox's arcade-style font
+textLabel.TextSize = 40
+textLabel.TextColor3 = Color3.new(0, 0, 0) -- Red color
+textLabel.BackgroundTransparency = 1
+textLabel.Position = UDim2.new(0, 790, 0.2, 0) -- Left side of the screen
+textLabel.Size = UDim2.new(0, 200, 0, 50)
+
+
+local player = game.Players.LocalPlayer
+local partSpawned = false  -- Flag to ensure only one part is spawned
+
+-- Function to spawn part above player on death
+local function onDeath()
+    if partSpawned then return end  -- Prevent spawning multiple parts
+
+    -- Create a part above the character
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(4, 1, 4)  -- Size of the part (adjust as needed)
+    part.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10, 0)  -- 10 studs above the character
+    part.Anchored = true  -- Make sure the part stays in place
+    part.CanCollide = false  -- Disable collisions
+    part.Parent = workspace  -- Parent the part to the workspace
+
+    -- Set flag to true, indicating part has been spawned
+    partSpawned = true
+
+    -- Wait 8 seconds
+    wait(6)
+
+    -- Log the player's username to the output
+    print("Player's Username: " .. player.Name)
+
+    -- Teleport the player to the part
+    player.Character:SetPrimaryPartCFrame(part.CFrame)
+
+    -- Delete the part after teleporting
+    part:Destroy()
+
+    -- Paste your custom code below this comment, it will run after 8 seconds
+    
+local animationId = 13927612951 -- Only detect this specific animation ID 
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
+local teleporting = false
+
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local otherHRP = otherPlayer.Character.HumanoidRootPart
+            local distance = (hrp.Position - otherHRP.Position).Magnitude
+            
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = otherHRP
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function teleportLoop()
+    local endTime = tick() + 3 -- Run for 3 seconds
+    while tick() < endTime do
+        local target = getClosestPlayer()
+        if target then
+            hrp.CFrame = target.CFrame -- Teleport to the closest player
+        end
+        task.wait(0.00001) -- Extremely fast loop
+    end
+    teleporting = false
+end
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId and not teleporting then
+        teleporting = true
+        teleportLoop()
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+local animationId = 13927612951 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        
+       -- Get player and character objects
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Access the character's head and torso for sound placements
+local head = character:WaitForChild("Head")
+local torso = character:WaitForChild("Torso")
+
+-- Create the screen gray effect and invert it
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local grayFrame = Instance.new("Frame")
+grayFrame.Size = UDim2.new(1, 0, 1, 0)
+grayFrame.Position = UDim2.new(0, 0, 0, 0) -- Ensure it covers the whole screen
+grayFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Darker gray color
+grayFrame.BackgroundTransparency = 0
+grayFrame.Parent = screenGui
+
+-- Apply the color inversion using a negative filter with UIGradient
+local invertGradient = Instance.new("UIGradient")
+invertGradient.Parent = grayFrame
+invertGradient.Color = ColorSequence.new(
+    Color3.fromRGB(255, 0, 0),   -- Red (more saturated)
+    Color3.fromRGB(0, 255, 255)  -- Cyan (more saturated)
+)
+invertGradient.Rotation = 180  -- Flip the gradient for inverted effect
+
+-- Fade the gray screen out after 0.2 seconds
+game:GetService("TweenService"):Create(
+    grayFrame,
+    TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+    {BackgroundTransparency = 1}
+):Play()
+
+-- Remove the gray frame and UIGradient after the effect
+delay(0.25, function()
+    screenGui:Destroy()
+end)
+
+-- Now, simulate an "invert" for objects within a 2000-stud radius
+local region = Region3.new(character.HumanoidRootPart.Position - Vector3.new(2000, 2000, 2000), character.HumanoidRootPart.Position + Vector3.new(2000, 2000, 2000))
+local parts = workspace:FindPartsInRegion3(region, nil, math.huge) -- Get parts in the area
+
+local invertedParts = {}
+
+for _, part in pairs(parts) do
+    -- Ensure the part has a Color property (skip non-colored parts like lights)
+    if part:IsA("BasePart") then
+        local originalColor = part.Color
+        local invertedColor = Color3.fromRGB(
+            math.clamp(255 - originalColor.R * 255, 0, 255), 
+            math.clamp(255 - originalColor.G * 255, 0, 255),
+            math.clamp(255 - originalColor.B * 255, 0, 255)
+        )
+        
+        -- Temporarily change color to simulate an inversion effect
+        part.Color = invertedColor
+        
+        -- Store the part and its original color to revert back later
+        table.insert(invertedParts, {part = part, originalColor = originalColor})
+    end
+end
+
+-- After a short delay, revert the inversion (uninvert)
+delay(17.3, function() 
+    for _, data in pairs(invertedParts) do
+        local part = data.part
+        local originalColor = data.originalColor
+        part.Color = originalColor -- Reset color
+    end
+end)
+
+-- Create a giant glass sphere that expands out of the character's chest
+local sphere = Instance.new("Part")
+sphere.Shape = Enum.PartType.Ball
+sphere.Size = Vector3.new(1, 1, 1) -- Start with a small size
+sphere.Position = character.HumanoidRootPart.Position + Vector3.new(0, 2, 0) -- Position at the chest
+sphere.Material = Enum.Material.Glass
+sphere.Color = Color3.fromRGB(0, 255, 255) -- Cyan color for the glass
+sphere.Anchored = true
+sphere.CanCollide = false
+sphere.Parent = workspace
+
+-- Expand the sphere much more significantly
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local goal = {Size = Vector3.new(50, 50, 50)} -- Expanded to a much larger size
+
+game:GetService("TweenService"):Create(sphere, tweenInfo, goal):Play()
+
+-- Make the sphere disappear after 1 second
+delay(1, function()
+    sphere:Destroy()
+end)
+
+
+
+local tssfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://5679636294"
+tssfx.Volume = 10
+tssfx:Play()
+
+local player = game.Players.LocalPlayer
+
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("ZA WARUDO!", "All")
+wait(2)
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4329802996"
+tssfx.Volume = 10
+tssfx:Play()
+
+local player = game.Players.LocalPlayer
+
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Let Time Resume.", "All")
+
+
+ -- Paste your code here
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = gui
+textLabel.Text = "BLOOD METER"
+textLabel.Font = Enum.Font.Arcade -- Uses Roblox's arcade-style font
+textLabel.TextSize = 40
+textLabel.TextColor3 = Color3.new(1, 0, 0) -- Red color
+textLabel.BackgroundTransparency = 1
+textLabel.Position = UDim2.new(0, 35, 0.3, 0) -- Left side of the screen
+textLabel.Size = UDim2.new(0, 200, 0, 50)
+
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create Health Bar Frame
+local healthBar = Instance.new("Frame")
+healthBar.Size = UDim2.new(0.02, 0, 0.3, 0) -- Adjust width and height as needed
+healthBar.Position = UDim2.new(0.02, 0, 0.35, 0) -- Adjust position to left middle
+healthBar.BackgroundColor3 = Color3.fromRGB(100, 0, 0) -- Dark red
+healthBar.BorderSizePixel = 0
+healthBar.ClipsDescendants = true -- Ensure the meter is clipped inside the frame
+healthBar.Parent = screenGui
+
+-- Create Health Meter (Filling bar)
+local healthMeter = Instance.new("Frame")
+healthMeter.Size = UDim2.new(1, 0, 1, 0)
+healthMeter.Position = UDim2.new(0, 0, 0, 0)
+healthMeter.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- Bright red for visibility
+healthMeter.BorderSizePixel = 0
+healthMeter.Parent = healthBar
+
+-- Update function
+local function updateHealth()
+    local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+    healthMeter.Size = UDim2.new(1, 0, healthPercent, 0)
+    healthMeter.Position = UDim2.new(0, 0, 1 - healthPercent, 0) -- Moves the bar down
+    
+    if healthPercent == 0 then
+        -- Animate the bar filling up in 4 seconds
+        local tweenService = game:GetService("TweenService")
+        local tweenInfo = TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local goal = {Size = UDim2.new(1, 0, 1, 0), Position = UDim2.new(0, 0, 0, 0)}
+        local tween = tweenService:Create(healthMeter, tweenInfo, goal)
+        tween:Play()
+    end
+end
+
+-- Connect event
+humanoid.HealthChanged:Connect(updateHealth)
+updateHealth()
+
+
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = gui
+textLabel.Size = UDim2.new(0, 200, 0, 50) -- Adjust size
+textLabel.Position = UDim2.new(0, 10, 0, 10) -- Top-left corner
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "STAND MODE"
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.Font = Enum.Font.Arcade
+textLabel.TextSize = 30
+
+local mode = "VAMPIRE MODE"
+
+local userInputService = game:GetService("UserInputService")
+
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        if mode == "VAMPIRE MODE" then
+            mode = "STAND MODE"
+        else
+            mode = "VAMPIRE MODE"
+        end
+        textLabel.Text = mode
+    end
+end)
+
+
+local animationId = 12447707844 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        
+        
+local player = game.Players.LocalPlayer
+wait(1)
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("THIS IS THE GREATEST HIGH!", "All")
+wait(1)
+local player = game.Players.LocalPlayer
+
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("HAHAHA!", "All")
+
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+local animationId = 12983333733 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        
+        
+local player = game.Players.LocalPlayer
+wait(1)
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("ZA WARUDO!", "All")
+wait(6.9)
+local player = game.Players.LocalPlayer
+
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Let Time Resume.", "All")
+
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+--SERIOUS PUNCH TEELPORT
+local animationId = 12983333733 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+
+-- Function to find the closest player
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local characterPosition = character.PrimaryPart.Position
+    
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character.PrimaryPart then
+            local distance = (otherPlayer.Character.PrimaryPart.Position - characterPosition).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = otherPlayer.Character.PrimaryPart
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        print("Animation with ID " .. animationId .. " was played!")
+        
+        -- Start teleporting loop
+        local startTime = tick()
+        while tick() - startTime < 6 do
+            local closest = getClosestPlayer()
+            if closest then
+                if tick() - startTime >= 5 then
+                    -- Teleport 10 studs in front of the closest player while facing them
+                    local forwardVector = closest.CFrame.LookVector * -10
+                    local newPosition = closest.Position + forwardVector
+                    character:SetPrimaryPartCFrame(CFrame.new(newPosition, closest.Position))
+                else
+                    -- Regular teleporting
+                    character:SetPrimaryPartCFrame(closest.CFrame)
+                end
+            end
+            task.wait(0.001)
+        end
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+local animationId = 12983333733 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        wait(2)
+       -- Get player and character objects
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Access the character's head and torso for sound placements
+local head = character:WaitForChild("Head")
+local torso = character:WaitForChild("Torso")
+
+-- Create the screen gray effect and invert it
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local grayFrame = Instance.new("Frame")
+grayFrame.Size = UDim2.new(1, 0, 1, 0)
+grayFrame.Position = UDim2.new(0, 0, 0, 0) -- Ensure it covers the whole screen
+grayFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Darker gray color
+grayFrame.BackgroundTransparency = 0
+grayFrame.Parent = screenGui
+
+-- Apply the color inversion using a negative filter with UIGradient
+local invertGradient = Instance.new("UIGradient")
+invertGradient.Parent = grayFrame
+invertGradient.Color = ColorSequence.new(
+    Color3.fromRGB(255, 0, 0),   -- Red (more saturated)
+    Color3.fromRGB(0, 255, 255)  -- Cyan (more saturated)
+)
+invertGradient.Rotation = 180  -- Flip the gradient for inverted effect
+
+-- Fade the gray screen out after 0.2 seconds
+game:GetService("TweenService"):Create(
+    grayFrame,
+    TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+    {BackgroundTransparency = 1}
+):Play()
+
+-- Remove the gray frame and UIGradient after the effect
+delay(0.25, function()
+    screenGui:Destroy()
+end)
+
+-- Now, simulate an "invert" for objects within a 2000-stud radius
+local region = Region3.new(character.HumanoidRootPart.Position - Vector3.new(2000, 2000, 2000), character.HumanoidRootPart.Position + Vector3.new(2000, 2000, 2000))
+local parts = workspace:FindPartsInRegion3(region, nil, math.huge) -- Get parts in the area
+
+local invertedParts = {}
+
+for _, part in pairs(parts) do
+    -- Ensure the part has a Color property (skip non-colored parts like lights)
+    if part:IsA("BasePart") then
+        local originalColor = part.Color
+        local invertedColor = Color3.fromRGB(
+            math.clamp(255 - originalColor.R * 255, 0, 255), 
+            math.clamp(255 - originalColor.G * 255, 0, 255),
+            math.clamp(255 - originalColor.B * 255, 0, 255)
+        )
+        
+        -- Temporarily change color to simulate an inversion effect
+        part.Color = invertedColor
+        
+        -- Store the part and its original color to revert back later
+        table.insert(invertedParts, {part = part, originalColor = originalColor})
+    end
+end
+
+-- After a short delay, revert the inversion (uninvert)
+delay(6.3, function() 
+    for _, data in pairs(invertedParts) do
+        local part = data.part
+        local originalColor = data.originalColor
+        part.Color = originalColor -- Reset color
+    end
+end)
+
+-- Create a giant glass sphere that expands out of the character's chest
+local sphere = Instance.new("Part")
+sphere.Shape = Enum.PartType.Ball
+sphere.Size = Vector3.new(1, 1, 1) -- Start with a small size
+sphere.Position = character.HumanoidRootPart.Position + Vector3.new(0, 2, 0) -- Position at the chest
+sphere.Material = Enum.Material.Glass
+sphere.Color = Color3.fromRGB(0, 255, 255) -- Cyan color for the glass
+sphere.Anchored = true
+sphere.CanCollide = false
+sphere.Parent = workspace
+
+-- Expand the sphere much more significantly
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local goal = {Size = Vector3.new(50, 50, 50)} -- Expanded to a much larger size
+
+game:GetService("TweenService"):Create(sphere, tweenInfo, goal):Play()
+
+-- Make the sphere disappear after 1 second
+delay(1, function()
+    sphere:Destroy()
+end)
+
+
+
+local tssfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://5679636294"
+tssfx.Volume = 10
+tssfx:Play()
+wait(3)
+
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://6191764144"
+tssfx.Volume = 10
+tssfx:Play()
+wait(2)
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4329802996"
+tssfx.Volume = 10
+tssfx:Play()
+wait(1)
+
+
+ -- Paste your code here
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+----ROAD ROLLER STUFF
+local animationId = 11365563255 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        
+        local meshId = "rbxassetid://6539353839"
+local textureId = "rbxassetid://6539354742"
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local function spawnMesh()
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    task.wait(6) -- Waits 1 second before spawning
+
+    -- Store the original position
+    local originalPosition = rootPart.Position
+
+local player = game.Players.LocalPlayer
+
+game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("ROAD ROLLA DA!", "All")
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://616582814"
+sound.Volume = 5 -- Adjust volume if needed
+sound.Looped = false -- Set to true if you want it to loop
+sound.Parent = game.Workspace -- Parent it somewhere in the game
+
+sound:Play()
+
+-- Optional: Destroy the sound instance after it finishes playing
+task.spawn(function()
+    sound.Ended:Wait()
+    sound:Destroy()
+end)
+
+    local forwardOffset = rootPart.CFrame.LookVector * 50 -- 50 studs in front
+    local spawnPosition = character.PrimaryPart.Position + forwardOffset + Vector3.new(0, 750, 0) -- Adjusted height
+
+    local meshPart = Instance.new("Part")
+    meshPart.Size = Vector3.new(10, 10, 10) -- Bigger size
+    meshPart.Position = spawnPosition
+    meshPart.Anchored = false -- Gravity will pull it down
+    meshPart.CanCollide = true -- Can hit the ground
+    meshPart.Parent = workspace
+
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshId = meshId
+    mesh.TextureId = textureId
+    mesh.Scale = Vector3.new(5, 5, 5) -- Makes it 5x bigger
+    mesh.Parent = meshPart
+
+    -- Teleport character onto the mesh using CFrame
+    rootPart.CFrame = meshPart.CFrame * CFrame.new(0, meshPart.Size.Y / 8 + 12, 0)
+
+    -- Make the mesh fall exactly 750 studs over 5 seconds
+    local goalCFrame = meshPart.CFrame - Vector3.new(0, 750, 0)
+    local tweenService = game:GetService("TweenService")
+    local tweenInfo = TweenInfo.new(1.7, Enum.EasingStyle.Linear) -- 5 seconds fall time
+    local tween = tweenService:Create(meshPart, tweenInfo, {CFrame = goalCFrame})
+    tween:Play()
+
+    -- Also move the character down with the mesh
+    tweenService:Create(rootPart, tweenInfo, {CFrame = goalCFrame * CFrame.new(0, meshPart.Size.Y / 5 + 3, 0)}):Play()
+
+    -- After 5 seconds, teleport the character back to the original position
+    task.delay(5, function()
+        rootPart.CFrame = CFrame.new(originalPosition)
+    end)
+
+    -- Make the mesh disappear after 15 seconds
+    task.delay(15, function()
+        if meshPart then
+            meshPart:Destroy()
+        end
+    end)
+end
+
+spawnMesh() 
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+--[UPPER CUT AWK ]]
+
+local animationId = 140164642047188
+local soundId = 616593932 -- Replace with your sound asset ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation and animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character and p.Character:FindFirstChild("Humanoid")
+        
+        if not Humanoid then return end -- Ensure humanoid exists
+        
+        -- Stop all playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+        wait(1)
+        
+        -- Create and play the first animation after 1 second
+        local firstAnim = Instance.new("Animation")
+        firstAnim.AnimationId = "rbxassetid://18181589384"
+        local firstAnimTrack = Humanoid:LoadAnimation(firstAnim)
+        
+        if not firstAnimTrack then return end -- Ensure animation loads
+        
+        local startTime = 0
+        firstAnimTrack:Play()
+        firstAnimTrack:AdjustSpeed(0)
+        firstAnimTrack.TimePosition = startTime
+        firstAnimTrack:AdjustSpeed(0.8)
+        
+        -- Create and play a sound
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. soundId
+        sound.Parent = character -- Attach to character
+        sound.Volume = 1 -- Adjust volume as needed
+        sound.PlayOnRemove = true -- Ensures it plays instantly when removed
+        wait(1) sound:Play()
+        
+        firstAnimTrack.Stopped:Connect(function()
+            -- Create and play the second animation after the first one ends
+            local secondAnim = Instance.new("Animation")
+            secondAnim.AnimationId = "rbxassetid://17799224866"
+            local secondAnimTrack = Humanoid:LoadAnimation(secondAnim)
+            
+            if secondAnimTrack then
+                secondAnimTrack:Play()
+            end
+            
+            -- Stop the second animation after 2 seconds
+            delay(2, function()
+                secondAnimTrack:Stop()
+            end)
+            
+            secondAnimTrack.Stopped:Connect(function()
+                -- Create and play the third animation after the second one ends
+                local thirdAnim = Instance.new("Animation")
+                thirdAnim.AnimationId = "rbxassetid://18181589384" -- Replace with your third animation ID
+                local thirdAnimTrack = Humanoid:LoadAnimation(thirdAnim)
+                
+                if thirdAnimTrack then
+                    thirdAnimTrack:Play()
+                end
+                
+                -- Stop the third animation after 3.5 seconds
+                delay(3.5, function()
+                    thirdAnimTrack:Stop()
+                end)
+            end)
+        end)
+        
+        -- Stop the first animation and clean up after 3 seconds
+        delay(3, function()
+            firstAnimTrack:Stop()
+            sound:Destroy() -- Clean up the sound after it's done playing
+        end)
+    end
+end
+
+
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+local animationId = 140164642047188 -- Only detect this specific animation ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        -- Animation with the specific ID was played, you can add your logic here
+        print("Animation with ID " .. animationId .. " was played!")
+        
+       -- Get player and character objects
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Access the character's head and torso for sound placements
+local head = character:WaitForChild("Head")
+local torso = character:WaitForChild("Torso")
+
+-- Create the screen gray effect and invert it
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local grayFrame = Instance.new("Frame")
+grayFrame.Size = UDim2.new(1, 0, 1, 0)
+grayFrame.Position = UDim2.new(0, 0, 0, 0) -- Ensure it covers the whole screen
+grayFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Darker gray color
+grayFrame.BackgroundTransparency = 0
+grayFrame.Parent = screenGui
+
+-- Apply the color inversion using a negative filter with UIGradient
+local invertGradient = Instance.new("UIGradient")
+invertGradient.Parent = grayFrame
+invertGradient.Color = ColorSequence.new(
+    Color3.fromRGB(255, 0, 0),   -- Red (more saturated)
+    Color3.fromRGB(0, 255, 255)  -- Cyan (more saturated)
+)
+invertGradient.Rotation = 180  -- Flip the gradient for inverted effect
+
+-- Fade the gray screen out after 0.2 seconds
+game:GetService("TweenService"):Create(
+    grayFrame,
+    TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+    {BackgroundTransparency = 1}
+):Play()
+
+-- Remove the gray frame and UIGradient after the effect
+delay(0.25, function()
+    screenGui:Destroy()
+end)
+
+-- Now, simulate an "invert" for objects within a 2000-stud radius
+local region = Region3.new(character.HumanoidRootPart.Position - Vector3.new(2000, 2000, 2000), character.HumanoidRootPart.Position + Vector3.new(2000, 2000, 2000))
+local parts = workspace:FindPartsInRegion3(region, nil, math.huge) -- Get parts in the area
+
+local invertedParts = {}
+
+for _, part in pairs(parts) do
+    -- Ensure the part has a Color property (skip non-colored parts like lights)
+    if part:IsA("BasePart") then
+        local originalColor = part.Color
+        local invertedColor = Color3.fromRGB(
+            math.clamp(255 - originalColor.R * 255, 0, 255), 
+            math.clamp(255 - originalColor.G * 255, 0, 255),
+            math.clamp(255 - originalColor.B * 255, 0, 255)
+        )
+        
+        -- Temporarily change color to simulate an inversion effect
+        part.Color = invertedColor
+        
+        -- Store the part and its original color to revert back later
+        table.insert(invertedParts, {part = part, originalColor = originalColor})
+    end
+end
+
+-- After a short delay, revert the inversion (uninvert)
+delay(8.3, function() 
+    for _, data in pairs(invertedParts) do
+        local part = data.part
+        local originalColor = data.originalColor
+        part.Color = originalColor -- Reset color
+    end
+end)
+
+-- Create a giant glass sphere that expands out of the character's chest
+local sphere = Instance.new("Part")
+sphere.Shape = Enum.PartType.Ball
+sphere.Size = Vector3.new(1, 1, 1) -- Start with a small size
+sphere.Position = character.HumanoidRootPart.Position + Vector3.new(0, 2, 0) -- Position at the chest
+sphere.Material = Enum.Material.Glass
+sphere.Color = Color3.fromRGB(0, 255, 255) -- Cyan color for the glass
+sphere.Anchored = true
+sphere.CanCollide = false
+sphere.Parent = workspace
+
+-- Expand the sphere much more significantly
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local goal = {Size = Vector3.new(50, 50, 50)} -- Expanded to a much larger size
+
+game:GetService("TweenService"):Create(sphere, tweenInfo, goal):Play()
+
+-- Make the sphere disappear after 1 second
+delay(1, function()
+    sphere:Destroy()
+end)
+
+
+
+local tssfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://5679636294"
+tssfx.Volume = 10
+tssfx:Play()
+wait(2)
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4940109913"
+tssfx.Volume = 5
+tssfx:Play()
+wait(1)
+local clockfx = Instance.new("Sound", head)
+tssfx.SoundId = "rbxassetid://4329802996"
+tssfx.Volume = 10
+tssfx:Play()
+wait(1)
+
+
+ -- Paste your code here
+    end
+end
+
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+
+local Tool = Instance.new("Tool")
+Tool.Name = "Teleport Tool"
+Tool.RequiresHandle = false
+Tool.Parent = game.Players.LocalPlayer.Backpack
+
+local cooldownTime = 2 -- Cooldown in seconds
+local canActivate = true -- To track if the tool can be activated
+
+local function onActivated()
+    -- Prevent activation if in cooldown
+    if not canActivate then return end
+
+    -- Start cooldown
+    canActivate = false
+    delay(cooldownTime, function()
+        canActivate = true
+    end)
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    local mouse = player:GetMouse()
+    local targetPos = mouse.Hit.Position -- Get click position
+    
+    -- Teleport above ground smoothly
+    character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+
+    -- Play sound effect with increased volume
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://6920047468"
+    sound.Volume = 5 -- Set volume to 5
+    sound.Parent = character.HumanoidRootPart
+    sound:Play()
+
+    -- Remove the sound after it finishes playing
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+
+    -- Create the screen gray effect and invert it
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local grayFrame = Instance.new("Frame")
+    grayFrame.Size = UDim2.new(1, 0, 1, 0)
+    grayFrame.Position = UDim2.new(0, 0, 0, 0) -- Ensure it covers the whole screen
+    grayFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Darker gray color
+    grayFrame.BackgroundTransparency = 0
+    grayFrame.Parent = screenGui
+
+    -- Apply the color inversion using a negative filter with UIGradient
+    local invertGradient = Instance.new("UIGradient")
+    invertGradient.Parent = grayFrame
+    invertGradient.Color = ColorSequence.new(
+        Color3.fromRGB(255, 255, 255), -- White
+        Color3.fromRGB(0, 0, 0)        -- Black
+    )
+    invertGradient.Rotation = 180  -- Flip the gradient for inverted effect
+
+    -- Fade the gray screen out after 0.2 seconds
+    game:GetService("TweenService"):Create(
+        grayFrame,
+        TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+        {BackgroundTransparency = 1}
+    ):Play()
+
+    -- Remove the gray frame and UIGradient after the effect
+    delay(0.25, function()
+        screenGui:Destroy()
+    end)
+    
+    -- Now, simulate an "invert" for objects within a 2000-stud radius
+    local region = Region3.new(character.HumanoidRootPart.Position - Vector3.new(2000, 2000, 2000), character.HumanoidRootPart.Position + Vector3.new(2000, 2000, 2000))
+    local parts = workspace:FindPartsInRegion3(region, nil, math.huge) -- Get parts in the area
+    
+    local invertedParts = {}
+    
+    for _, part in pairs(parts) do
+        -- Apply color inversion to each part (simulating visual effects)
+        local originalColor = part.Color
+        local invertedColor = Color3.fromRGB(255 - originalColor.R * 255, 255 - originalColor.G * 255, 255 - originalColor.B * 255)
+        
+        -- Temporarily change color to simulate an inversion effect
+        part.Color = invertedColor
+        
+        -- Store the part and its original color to revert back later
+        table.insert(invertedParts, {part = part, originalColor = originalColor})
+    end
+    
+    -- After a short delay, revert the inversion (uninvert)
+    delay(0.5, function()
+        for _, data in pairs(invertedParts) do
+            local part = data.part
+            local originalColor = data.originalColor
+            part.Color = originalColor -- Reset color
+        end
+    end)
+end
+
+Tool.Activated:Connect(onActivated)
+
+
+
+
+local player = game.Players.LocalPlayer
+local char = player.Character
+local Humanoid = char.Humanoid
+local hot = player.PlayerGui:WaitForChild("Hotbar")
+local hotbar = hot:WaitForChild("Backpack"):WaitForChild("Hotbar")
+local magichealth = player.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("MagicHealth")
+local UltLabel = magichealth:WaitForChild("TextLabel")
+
+UltLabel.Visible = false
+local UltLabelClone = UltLabel:Clone()
+UltLabelClone.Visible = true
+UltLabelClone.Name = "UltThing"
+UltLabelClone.Parent = magichealth
+
+local toolNameSets = {
+    {
+        ["Normal Punch"] = "Gut Punch",
+        ["Consecutive Punches"] = "MUDA MUDA MUDAHH",
+        ["Shove"] = "Vaporization Freeze",
+        ["Uppercut"] = "BloodSuck"
+    },
+    {
+        ["Normal Punch"] = "Donut Punch",
+        ["Consecutive Punches"] = "MUDA MUDA MUDA",
+        ["Shove"] = "Weak Stand Punch",
+        ["Uppercut"] = "Heaven's Kick"
+    }
+}
+
+local currentSet = 1
+
+local function cloneToolName(slot, text)
+    local toolName = slot.ToolName
+    if not slot:FindFirstChild("CustomName") then
+        toolName.Visible = false
+        local clone = toolName:Clone()
+        clone.Name = "CustomName"
+        clone.Parent = slot
+        clone.Text = text
+        clone.Visible = true
+    else
+        slot.CustomName.Text = text
+    end
+end
+
+local function updateToolNames()
+    for _, slot in ipairs(hotbar:GetChildren()) do
+        if slot:FindFirstChild("Base") and slot.Base:FindFirstChild("ToolName") then
+            local toolNameText = slot.Base.ToolName.Text
+            local newName = toolNameSets[currentSet][toolNameText]
+            if newName then
+                cloneToolName(slot.Base, newName)
+            end
+        end
+    end
+    UltLabelClone.Text = "GREATEST HIGH"
+end
+
+local userInputService = game:GetService("UserInputService")
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E then
+        currentSet = (currentSet % #toolNameSets) + 1
+        updateToolNames()
+    end
+end)
+
+
+--MOVE 1
+local animationId = 10468665991
+local toggledAnimationId = 17889458563
+local soundId = 6665704220
+local toggledSoundId = 6191764144 -- New toggled sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local userInputService = game:GetService("UserInputService")
+
+local isToggled = false -- Toggle state
+
+-- Function to play sound
+local function playSound()
+    local selectedSoundId = isToggled and toggledSoundId or soundId
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. selectedSoundId
+    sound.Volume = 3 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+        
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Select the correct animation based on toggle state
+        local selectedAnimationId = isToggled and toggledAnimationId or 16945573694
+        local selectedSpeed = isToggled and 0.3 or 1.2 -- Slow down toggled animation by half
+
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://" .. selectedAnimationId
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(selectedSpeed) -- Adjust animation speed dynamically
+        
+        -- Play sound
+        wait(0.6) 
+        playSound()
+
+        -- Stop animation after 3 seconds
+        task.delay(3, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+-- Toggle function
+local function onInputBegan(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E then
+        isToggled = not isToggled -- Toggle state
+    end
+end
+
+userInputService.InputBegan:Connect(onInputBegan)
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+
+
+
+
+
+--MOVE 2
+local animationId = 10466974800
+local toggledAnimationId = 17799224866
+local soundId = 5205486984
+local toggledSoundId = 6665694197 -- New toggled sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local userInputService = game:GetService("UserInputService")
+
+local isToggled = false -- Toggle state
+
+-- Function to play sound
+local function playSound()
+    local selectedSoundId = isToggled and toggledSoundId or soundId
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. selectedSoundId
+    sound.Volume = 3 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+        
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Select the correct animation based on toggle state
+        local selectedAnimationId = isToggled and toggledAnimationId or 10466974800
+
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://" .. selectedAnimationId
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim:AdjustSpeed(0)
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(1.2) -- Adjust animation speed
+        
+        -- Play sound
+        wait(0.1) playSound()
+
+        -- Stop animation after 3 seconds
+        task.delay(2, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+-- Toggle function
+local function onInputBegan(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E then
+        isToggled = not isToggled -- Toggle state
+    end
+end
+
+userInputService.InputBegan:Connect(onInputBegan)
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+local animationId = "rbxassetid://10466974800"
+local effectTemplate = game.ReplicatedStorage.Resources.CrabBeam.STart.dash.Attachment
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local isEffectDisabled = false  -- Toggle variable to control the effect
+
+local function playEffect()
+    if isEffectDisabled then
+        return  -- Don't play the effect if disabled
+    end
+
+    local effectClone = effectTemplate:Clone()
+    effectClone.Parent = character:WaitForChild("HumanoidRootPart")
+
+    for _, child in ipairs(effectClone:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child:Emit(10)
+            child.Enabled = true
+        end
+    end
+
+    -- Stop effect after 2.5 seconds
+    task.delay(1.5, function()
+        for _, child in ipairs(effectClone:GetChildren()) do
+            if child:IsA("ParticleEmitter") then
+                child.Enabled = false
+            end
+        end
+        task.wait(0) -- Give time for particles to fade out
+        effectClone:Destroy()
+    end)
+end
+
+-- Detect animation playback
+humanoid.AnimationPlayed:Connect(function(animTrack)
+    if animTrack.Animation.AnimationId == animationId then
+        playEffect()
+    end
+end)
+
+-- Toggle the effect on and off when E is pressed
+local userInputService = game:GetService("UserInputService")
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.E then
+        isEffectDisabled = not isEffectDisabled  -- Toggle the effect
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local animationId = "rbxassetid://10471336737"
+local effectTemplate = game.ReplicatedStorage.Resources.FinalEffects.SwingUp.Attachment
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local isEffectDisabled = false  -- Toggle variable to control the effect
+
+local function playEffect()
+    if isEffectDisabled then
+        return  -- Don't play the effect if disabled
+    end
+
+    local effectClone = effectTemplate:Clone()
+    effectClone.Parent = character:WaitForChild("HumanoidRootPart")
+
+    for _, child in ipairs(effectClone:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child:Emit(15)
+            child.Enabled = true
+            child.Color = ColorSequence.new(Color3.fromRGB(173, 216, 230)) -- Light blue
+        end
+    end
+
+    -- Stop effect after 1 second
+    task.delay(0.7, function()
+        for _, child in ipairs(effectClone:GetChildren()) do
+            if child:IsA("ParticleEmitter") then
+                child.Enabled = false
+            end
+        end
+        effectClone:Destroy()
+    end)
+end
+
+-- Detect animation playback
+humanoid.AnimationPlayed:Connect(function(animTrack)
+    if animTrack.Animation.AnimationId == animationId then
+        playEffect()
+    end
+end)
+
+-- Toggle the effect on and off when E is pressed
+local userInputService = game:GetService("UserInputService")
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.E then
+        isEffectDisabled = not isEffectDisabled  -- Toggle the effect
+    end
+end)
+
+
+---MOVE 4 VFX
+local animationId = "rbxassetid://12510170988"
+local effectTemplate = game.ReplicatedStorage.Resources.CrabBeam.Blast.dashpunch.main
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rightArm = character:WaitForChild("Right Arm") -- Attach to right arm
+
+local isEffectDisabled = false  -- Toggle variable to control the effect
+
+local function playEffect()
+    if isEffectDisabled then
+        return  -- Don't play the effect if disabled
+    end
+
+    local effectClone = effectTemplate:Clone()
+    effectClone.Parent = rightArm  -- Attach effect to the right arm
+
+    for _, child in ipairs(effectClone:GetChildren()) do
+        if child:IsA("ParticleEmitter") then
+            child:Emit(15)
+            child.Enabled = true
+        end
+    end
+
+    -- Stop effect after 1 second
+    task.delay(1, function()
+        for _, child in ipairs(effectClone:GetChildren()) do
+            if child:IsA("ParticleEmitter") then
+                child.Enabled = false
+            end
+        end
+        effectClone:Destroy()
+    end)
+end
+
+-- Detect animation playback
+humanoid.AnimationPlayed:Connect(function(animTrack)
+    if animTrack.Animation.AnimationId == animationId then
+        playEffect()
+    end
+end)
+
+-- Toggle the effect on and off when E is pressed
+local userInputService = game:GetService("UserInputService")
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.E then
+        isEffectDisabled = not isEffectDisabled  -- Toggle the effect
+    end
+end)
+
+
+--MOVE 3
+local animationId = 10471336737
+local toggledAnimationId = 17889458563
+local soundId = 6092902279
+local toggledSoundId = 6191764144 -- New toggled sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local userInputService = game:GetService("UserInputService")
+
+local isToggled = false -- Toggle state
+
+-- Function to play sound
+local function playSound()
+    local selectedSoundId = isToggled and toggledSoundId or soundId
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. selectedSoundId
+    sound.Volume = 3 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+        
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Select the correct animation based on toggle state
+        local selectedAnimationId = isToggled and toggledAnimationId or 16552234590
+        local selectedSpeed = isToggled and 0.7 or 0.7 -- Slow down toggled animation by half
+
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://" .. selectedAnimationId
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(selectedSpeed) -- Adjust animation speed dynamically
+        
+        -- Play sound
+        wait(0.001) 
+        playSound()
+
+        -- Stop animation after 3 seconds
+        task.delay(3, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+-- Toggle function
+local function onInputBegan(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E then
+        isToggled = not isToggled -- Toggle state
+    end
+end
+
+userInputService.InputBegan:Connect(onInputBegan)
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+
+--MOVE 4
+local animationId = 12510170988
+local toggledAnimationId = 15295895753
+local soundId = 6923736441
+local toggledSoundId = 8701825353 -- New toggled sound ID
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local userInputService = game:GetService("UserInputService")
+
+local isToggled = false -- Toggle state
+
+-- Function to play sound
+local function playSound()
+    local selectedSoundId = isToggled and toggledSoundId or soundId
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. selectedSoundId
+    sound.Volume = 3 -- Adjust volume as needed
+    sound.PlaybackSpeed = 1 -- Adjust speed if necessary
+    sound.Parent = character:FindFirstChild("HumanoidRootPart") or character -- Attach to character
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
+end
+
+-- Function triggered when animation is played
+local function onAnimationPlayed(animationTrack)
+    if animationTrack.Animation.AnimationId == "rbxassetid://" .. animationId then
+        local p = game.Players.LocalPlayer
+        local Humanoid = p.Character:WaitForChild("Humanoid")
+        
+        -- Stop all other playing animations
+        for _, animTrack in pairs(Humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+
+        -- Select the correct animation based on toggle state
+        local selectedAnimationId = isToggled and toggledAnimationId or 17292579443
+        local selectedSpeed = isToggled and 1 or 1 -- Slow down toggled animation by half
+
+        -- Create and play new animation
+        local AnimAnim = Instance.new("Animation")
+        AnimAnim.AnimationId = "rbxassetid://" .. selectedAnimationId
+        local Anim = Humanoid:LoadAnimation(AnimAnim)
+        Anim:Play()
+        Anim.TimePosition = 0
+        Anim:AdjustSpeed(selectedSpeed) -- Adjust animation speed dynamically
+        
+        -- Play sound
+        wait(0.4) 
+        playSound()
+
+        -- Stop animation after 3 seconds
+        task.delay(3, function()
+            Anim:Stop()
+        end)
+    end
+end
+
+-- Toggle function
+local function onInputBegan(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.E then
+        isToggled = not isToggled -- Toggle state
+    end
+end
+
+userInputService.InputBegan:Connect(onInputBegan)
+humanoid.AnimationPlayed:Connect(onAnimationPlayed)
+
+-- Detect player death and clean up
+humanoid.Died:Connect(function()
+    if clone then
+        clone:Destroy()
+        clone = nil
+    end
+    isCloneActive = false
+    isEffectDisabled = false
+end)    
+
+
+local player = game.Players.LocalPlayer
+local char = player.Character
+local Humanoid = char.Humanoid
+local hot = player.PlayerGui:WaitForChild("Hotbar")
+local hotbar = hot:WaitForChild("Backpack"):WaitForChild("Hotbar")
+local magichealth = player.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("MagicHealth")
+local UltLabel = magichealth:WaitForChild("TextLabel")
+
+
+local toolNameSets = {
+ 	{
+        ["Death Counter"] = "ZA WARUDO!",
+        ["Table Flip"] = "ROADA ROLLA",
+        ["Serious Punch"] = "DONUT PUNCH",
+        ["Omni Directional Punch"] = "THE WORLD!"
+    },
+   
+}
+
+local currentSet = 1
+
+local function cloneToolName(slot, text)
+    local toolName = slot.ToolName
+    if not slot:FindFirstChild("CustomName") then
+        toolName.Visible = false
+        local clone = toolName:Clone()
+        clone.Name = "CustomName"
+        clone.Parent = slot
+        clone.Text = text
+        clone.Visible = true
+    else
+        slot.CustomName.Text = text
+    end
+end
+
+local function updateToolNames()
+    for _, slot in ipairs(hotbar:GetChildren()) do
+        if slot:FindFirstChild("Base") and slot.Base:FindFirstChild("ToolName") then
+            local toolNameText = slot.Base.ToolName.Text
+            local newName = toolNameSets[currentSet][toolNameText]
+            if newName then
+                cloneToolName(slot.Base, newName)
+            end
+        end
+    end
+    UltLabelClone.Text = "GREATEST HIGH"
+end
+
+local userInputService = game:GetService("UserInputService")
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+   wait(2) if not gameProcessed and input.KeyCode == Enum.KeyCode.G then
+        currentSet = (currentSet % #toolNameSets) + 1
+        updateToolNames()
+    end
+end)
+
+end
+
+-- Reset the flag every time the character respawns
+player.CharacterAdded:Connect(function(character)
+    -- Reset the partSpawned flag to allow spawning a new part
+    partSpawned = false
+    
+    -- Wait for the humanoid and connect the death event
+    character:WaitForChild("Humanoid").Died:Connect(onDeath)
+end)
