@@ -1,0 +1,86 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local mouse = localPlayer:GetMouse()
+
+-- === Settings ===
+local AIM_RADIUS = 100 -- pixels
+local AIM_KEY = Enum.KeyCode.E
+local TOGGLE_RING_KEY = Enum.KeyCode.V
+local CIRCLE_OFFSET = Vector2.new(0, 55)
+-- ================
+
+local aiming = false
+local ringVisible = true
+
+-- Draw the aim circle
+local circle = Drawing.new("Circle")
+circle.Visible = ringVisible
+circle.Radius = AIM_RADIUS
+circle.Thickness = 1
+circle.Color = Color3.fromRGB(255, 0, 0)
+circle.Filled = false
+circle.Transparency = 1
+
+-- Get closest head to the circle center
+local function getClosestHead()
+	local closestHead = nil
+	local shortestDistance = AIM_RADIUS
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+			local head = player.Character.Head
+			local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+
+			if onScreen then
+				local mousePos = Vector2.new(mouse.X, mouse.Y) + CIRCLE_OFFSET
+				local headPos2D = Vector2.new(screenPos.X, screenPos.Y)
+				local distance = (mousePos - headPos2D).Magnitude
+
+				if distance <= shortestDistance then
+					shortestDistance = distance
+					closestHead = head
+				end
+			end
+		end
+	end
+
+	return closestHead
+end
+
+-- Update every frame
+RunService.RenderStepped:Connect(function()
+	-- Update circle position if visible
+	if ringVisible then
+		circle.Position = Vector2.new(mouse.X, mouse.Y) + CIRCLE_OFFSET
+	end
+
+	-- Aimbot locking
+	if aiming then
+		local head = getClosestHead()
+		if head then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+		end
+	end
+end)
+
+-- Input handling
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == AIM_KEY then
+		aiming = true
+	elseif input.KeyCode == TOGGLE_RING_KEY then
+		ringVisible = not ringVisible
+		circle.Visible = ringVisible
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+	if input.KeyCode == AIM_KEY then
+		aiming = false
+	end
+end)
