@@ -1,0 +1,100 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local healthGuis = {}
+local healthDisplayEnabled = true
+
+local function createHealthGui(targetPlayer)
+	if targetPlayer == localPlayer then return end
+
+	local char = targetPlayer.Character
+	if not char then return end
+
+	local head = char:FindFirstChild("Head")
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not head or not humanoid then return end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "HealthDisplay"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 100, 0, 20)
+	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 10000
+	billboard.LightInfluence = 0
+	billboard.Parent = head
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	textLabel.TextStrokeTransparency = 0.5
+	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.TextScaled = true
+	textLabel.Text = ""
+	textLabel.Visible = healthDisplayEnabled
+	textLabel.Parent = billboard
+
+	healthGuis[targetPlayer] = {
+		gui = billboard,
+		label = textLabel,
+		humanoid = humanoid
+	}
+end
+
+local function updateGuiVisibility()
+	for _, data in pairs(healthGuis) do
+		if data.label then
+			data.label.Visible = healthDisplayEnabled
+		end
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	for player, data in pairs(healthGuis) do
+		if data.humanoid and data.label then
+			if data.humanoid.Health > 0 then
+				data.label.Text = math.floor(data.humanoid.Health) .. " HP"
+			else
+				data.label.Text = "Dead"
+			end
+		end
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.B then
+		healthDisplayEnabled = not healthDisplayEnabled
+		updateGuiVisibility()
+	end
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+	if player ~= localPlayer then
+		player.CharacterAdded:Connect(function()
+			task.wait(1)
+			createHealthGui(player)
+		end)
+		if player.Character then
+			createHealthGui(player)
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		task.wait(1)
+		createHealthGui(player)
+	end)
+end)
+
+localPlayer.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoid = character:WaitForChild("Humanoid")
+end)
