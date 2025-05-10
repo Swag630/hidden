@@ -1,3 +1,8 @@
+--BANS UNDETECTABLE AIMBOT
+--Hold E To Enable Aimbot
+--Press V To Enable Ring
+
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
