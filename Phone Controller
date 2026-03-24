@@ -1,0 +1,976 @@
+--//========================================================
+--//  SIGNAL PHONE v2 
+--//  Author: unknown.swagmaster / updated
+--//
+--//  What this does:
+--//   - Press K to open/close a smooth phone UI
+--//   - Home screen with multiple app icons (only Messages is functional)
+--//   - Messages app has:
+--//        "Help me!"        -> red waypoint through walls for 10s
+--//        "Follow me!"      -> gold waypoint through walls for ALL clients, 20s
+--//        "Let's team!"     -> green highlight for 3s
+--//        "Stop following!" -> clears ALL active fx on sender for all clients
+--//   - Sending is animation-driven:
+--//        You press button -> your animation plays
+--//        All clients detect AnimationPlayed and infer signal from anim ID
+--//   - Feed logs events with smooth UI
+--//
+--//  Important:
+--//   - Every player must run this script for shared detection behavior
+--//   - Set your animation IDs in CONFIG.ANIMATION_IDS
+--//========================================================
+
+--//========================
+--// Services
+--//========================
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+	return
+end
+
+--//========================
+--// Config
+--//========================
+local CONFIG = {
+	KEYBIND = Enum.KeyCode.K,
+
+	PHONE_SIZE = Vector2.new(360, 640),
+	PHONE_ONSCREEN_POS = UDim2.new(1, -20, 0.5, -320),
+	PHONE_OFFSCREEN_POS = UDim2.new(1, 420, 0.5, -320),
+
+	OPEN_TWEEN  = TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+	CLOSE_TWEEN = TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+	PAGE_TWEEN  = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+
+	HELP_DURATION   = 10,
+	FOLLOW_DURATION = 20,   -- gold waypoint, visible to all, no range limit
+	TEAM_DURATION   = 3,
+
+	SIGNAL_DEBOUNCE    = 0.6,
+	PLAYER_REHOOK_DELAY = 0.2,
+
+	ANIMATION_IDS = {
+		HELP       = "rbxassetid://95939932538978",   -- set yours
+		FOLLOW     = "rbxassetid://70683985130739",   -- set yours
+		TEAM       = "rbxassetid://78450002510885",   -- set yours
+		STOPFOLLOW = "rbxassetid://93265997037616",   -- set yours
+	},
+
+	COLORS = {
+		PhoneShell  = Color3.fromRGB(17, 19, 26),
+		PhoneInner  = Color3.fromRGB(26, 29, 38),
+		HeaderText  = Color3.fromRGB(245, 247, 255),
+		SubText     = Color3.fromRGB(168, 176, 196),
+		Card        = Color3.fromRGB(34, 38, 48),
+		CardHover   = Color3.fromRGB(44, 49, 62),
+		Accent      = Color3.fromRGB(92, 140, 255),
+
+		Danger      = Color3.fromRGB(212, 52, 52),
+		Info        = Color3.fromRGB(66, 143, 255),
+		Success     = Color3.fromRGB(58, 204, 108),
+		Gold        = Color3.fromRGB(255, 196, 48),   -- Follow me! waypoint
+		StopRed     = Color3.fromRGB(160, 60, 160),   -- Stop following! purple
+
+		FeedNeutral = Color3.fromRGB(42, 46, 58),
+		FeedText    = Color3.fromRGB(235, 240, 255),
+	},
+}
+
+--//========================
+--// Helpers
+--//========================
+local function safeNotify(title, text, duration)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = title or "Phone",
+			Text  = text or "",
+			Duration = duration or 2
+		})
+	end)
+end
+
+local function nAnimId(animId: string): string
+	local n = tostring(animId or ""):match("%d+")
+	return n or ""
+end
+
+local function lerpColor(a: Color3, b: Color3, t: number): Color3
+	return a:Lerp(b, math.clamp(t, 0, 1))
+end
+
+local function quickTween(obj, info, props)
+	local tw = TweenService:Create(obj, info, props)
+	tw:Play()
+	return tw
+end
+
+local function makeCorner(parent, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius)
+	c.Parent = parent
+	return c
+end
+
+local function makeStroke(parent, color, thickness, transparency)
+	local s = Instance.new("UIStroke")
+	s.Color        = color
+	s.Thickness    = thickness or 1
+	s.Transparency = transparency or 0
+	s.Parent       = parent
+	return s
+end
+
+local function formatClock()
+	local dt = DateTime.now():ToLocalTime()
+	local h    = dt.Hour
+	local m    = dt.Minute
+	local ampm = "AM"
+	if h >= 12 then ampm = "PM" end
+	if h == 0 then h = 12 elseif h > 12 then h = h - 12 end
+	return string.format("%d:%02d %s", h, m, ampm)
+end
+
+--//========================
+--// Validation
+--//========================
+local ActionByAnim = {}
+do
+	local seen = {}
+	for action, id in pairs(CONFIG.ANIMATION_IDS) do
+		local n = nAnimId(id)
+		if n ~= "" and n ~= "0" then
+			if seen[n] then
+				warn(("[ Phone] Duplicate animation ID for %s and %s. Use unique IDs."):format(seen[n], action))
+			end
+			seen[n] = action
+			ActionByAnim[n] = action
+		end
+	end
+end
+
+local function animationConfigured(action: string): boolean
+	local id = CONFIG.ANIMATION_IDS[action]
+	local n   = nAnimId(id)
+	return n ~= "" and n ~= "0"
+end
+
+--//========================
+--// UI Build
+--//========================
+local OLD = CoreGui:FindFirstChild("SignalPhoneUI_Final")
+if OLD then OLD:Destroy() end
+
+local Screen = Instance.new("ScreenGui")
+Screen.Name           = "SignalPhoneUI_Final"
+Screen.ResetOnSpawn   = false
+Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Screen.Parent         = CoreGui
+
+-- floating mini button (failsafe)
+local ToggleMini = Instance.new("TextButton")
+ToggleMini.Name            = "ToggleMini"
+ToggleMini.Size            = UDim2.fromOffset(130, 38)
+ToggleMini.Position        = UDim2.new(0, 14, 1, -52)
+ToggleMini.BackgroundColor3 = CONFIG.COLORS.Card
+ToggleMini.TextColor3      = Color3.new(1, 1, 1)
+ToggleMini.Font            = Enum.Font.GothamBold
+ToggleMini.TextSize        = 14
+ToggleMini.Text            = "Open Phone (K)"
+ToggleMini.Parent          = Screen
+makeCorner(ToggleMini, 10)
+makeStroke(ToggleMini, Color3.fromRGB(90, 98, 120), 1, 0.35)
+
+local PhoneShadow = Instance.new("ImageLabel")
+PhoneShadow.Name              = "PhoneShadow"
+PhoneShadow.AnchorPoint       = Vector2.new(1, 0)
+PhoneShadow.Size              = UDim2.fromOffset(CONFIG.PHONE_SIZE.X + 40, CONFIG.PHONE_SIZE.Y + 40)
+PhoneShadow.Position          = CONFIG.PHONE_OFFSCREEN_POS + UDim2.fromOffset(10, 10)
+PhoneShadow.BackgroundTransparency = 1
+PhoneShadow.Image             = "rbxassetid://1316045217"
+PhoneShadow.ImageTransparency = 0.65
+PhoneShadow.ScaleType         = Enum.ScaleType.Slice
+PhoneShadow.SliceCenter       = Rect.new(10,10,118,118)
+PhoneShadow.ZIndex            = 1
+PhoneShadow.Parent            = Screen
+
+local Phone = Instance.new("Frame")
+Phone.Name              = "Phone"
+Phone.AnchorPoint       = Vector2.new(1, 0)
+Phone.Size              = UDim2.fromOffset(CONFIG.PHONE_SIZE.X, CONFIG.PHONE_SIZE.Y)
+Phone.Position          = CONFIG.PHONE_OFFSCREEN_POS
+Phone.BackgroundColor3  = CONFIG.COLORS.PhoneShell
+Phone.BorderSizePixel   = 0
+Phone.ZIndex            = 2
+Phone.Parent            = Screen
+makeCorner(Phone, 28)
+makeStroke(Phone, Color3.fromRGB(90, 98, 120), 1.2, 0.2)
+
+-- top notch
+local Notch = Instance.new("Frame")
+Notch.Size            = UDim2.fromOffset(130, 22)
+Notch.Position        = UDim2.new(0.5, -65, 0, 8)
+Notch.BackgroundColor3 = Color3.fromRGB(11, 12, 16)
+Notch.BorderSizePixel = 0
+Notch.ZIndex          = 4
+Notch.Parent          = Phone
+makeCorner(Notch, 10)
+
+local Inner = Instance.new("Frame")
+Inner.Name            = "Inner"
+Inner.Size            = UDim2.new(1, -16, 1, -16)
+Inner.Position        = UDim2.fromOffset(8, 8)
+Inner.BackgroundColor3 = CONFIG.COLORS.PhoneInner
+Inner.BorderSizePixel = 0
+Inner.ZIndex          = 3
+Inner.Parent          = Phone
+makeCorner(Inner, 22)
+
+-- status bar
+local StatusBar = Instance.new("Frame")
+StatusBar.Size                 = UDim2.new(1, -16, 0, 26)
+StatusBar.Position             = UDim2.fromOffset(8, 8)
+StatusBar.BackgroundTransparency = 1
+StatusBar.ZIndex               = 5
+StatusBar.Parent               = Inner
+
+local TimeLabel = Instance.new("TextLabel")
+TimeLabel.Size               = UDim2.new(0.5, 0, 1, 0)
+TimeLabel.Position           = UDim2.fromOffset(8, 0)
+TimeLabel.BackgroundTransparency = 1
+TimeLabel.TextXAlignment     = Enum.TextXAlignment.Left
+TimeLabel.Font               = Enum.Font.GothamSemibold
+TimeLabel.TextSize           = 13
+TimeLabel.TextColor3         = Color3.fromRGB(230, 235, 250)
+TimeLabel.Text               = formatClock()
+TimeLabel.ZIndex             = 5
+TimeLabel.Parent             = StatusBar
+
+local StatusRight = Instance.new("TextLabel")
+StatusRight.Size               = UDim2.new(0.5, -8, 1, 0)
+StatusRight.Position           = UDim2.new(0.5, 0, 0, 0)
+StatusRight.BackgroundTransparency = 1
+StatusRight.TextXAlignment     = Enum.TextXAlignment.Right
+StatusRight.Font               = Enum.Font.GothamSemibold
+StatusRight.TextSize           = 13
+StatusRight.TextColor3         = Color3.fromRGB(230, 235, 250)
+StatusRight.Text               = "LTE 100%"
+StatusRight.ZIndex             = 5
+StatusRight.Parent             = StatusBar
+
+-- page container
+local PagesHolder = Instance.new("Frame")
+PagesHolder.Name              = "PagesHolder"
+PagesHolder.Size              = UDim2.new(1, -16, 1, -58)
+PagesHolder.Position          = UDim2.fromOffset(8, 36)
+PagesHolder.BackgroundTransparency = 1
+PagesHolder.ClipsDescendants  = true
+PagesHolder.ZIndex            = 5
+PagesHolder.Parent            = Inner
+
+local HomePage = Instance.new("Frame")
+HomePage.Name               = "HomePage"
+HomePage.Size               = UDim2.fromScale(1, 1)
+HomePage.Position           = UDim2.fromScale(0, 0)
+HomePage.BackgroundTransparency = 1
+HomePage.ZIndex             = 5
+HomePage.Parent             = PagesHolder
+
+local MessagesPage = Instance.new("Frame")
+MessagesPage.Name               = "MessagesPage"
+MessagesPage.Size               = UDim2.fromScale(1, 1)
+MessagesPage.Position           = UDim2.fromScale(1, 0)
+MessagesPage.BackgroundTransparency = 1
+MessagesPage.ZIndex             = 5
+MessagesPage.Parent             = PagesHolder
+
+-- bottom home indicator
+local HomeIndicator = Instance.new("Frame")
+HomeIndicator.Size              = UDim2.fromOffset(128, 5)
+HomeIndicator.Position          = UDim2.new(0.5, -64, 1, -14)
+HomeIndicator.BackgroundColor3  = Color3.fromRGB(220, 225, 235)
+HomeIndicator.BackgroundTransparency = 0.2
+HomeIndicator.ZIndex            = 5
+HomeIndicator.Parent            = Inner
+makeCorner(HomeIndicator, 3)
+
+-- Home page content
+local HomeTitle = Instance.new("TextLabel")
+HomeTitle.Size               = UDim2.new(1, -10, 0, 34)
+HomeTitle.Position           = UDim2.fromOffset(6, 2)
+HomeTitle.BackgroundTransparency = 1
+HomeTitle.Text               = "Apps"
+HomeTitle.Font               = Enum.Font.GothamBold
+HomeTitle.TextSize           = 22
+HomeTitle.TextXAlignment     = Enum.TextXAlignment.Left
+HomeTitle.TextColor3         = CONFIG.COLORS.HeaderText
+HomeTitle.ZIndex             = 6
+HomeTitle.Parent             = HomePage
+
+local HomeSub = Instance.new("TextLabel")
+HomeSub.Size               = UDim2.new(1, -10, 0, 20)
+HomeSub.Position           = UDim2.fromOffset(6, 30)
+HomeSub.BackgroundTransparency = 1
+HomeSub.Text               = "Only Messages is online"
+HomeSub.Font               = Enum.Font.Gotham
+HomeSub.TextSize           = 13
+HomeSub.TextXAlignment     = Enum.TextXAlignment.Left
+HomeSub.TextColor3         = CONFIG.COLORS.SubText
+HomeSub.ZIndex             = 6
+HomeSub.Parent             = HomePage
+
+local AppsGrid = Instance.new("Frame")
+AppsGrid.Size               = UDim2.new(1, -4, 1, -70)
+AppsGrid.Position           = UDim2.fromOffset(2, 62)
+AppsGrid.BackgroundTransparency = 1
+AppsGrid.ZIndex             = 6
+AppsGrid.Parent             = HomePage
+
+local GridLayout = Instance.new("UIGridLayout")
+GridLayout.CellPadding  = UDim2.fromOffset(10, 10)
+GridLayout.CellSize     = UDim2.fromOffset(100, 100)
+GridLayout.SortOrder    = Enum.SortOrder.LayoutOrder
+GridLayout.Parent       = AppsGrid
+
+local function makeAppCard(name, subtitle, color, layoutOrder)
+	local b = Instance.new("TextButton")
+	b.Name             = name .. "Card"
+	b.LayoutOrder      = layoutOrder
+	b.BackgroundColor3 = CONFIG.COLORS.Card
+	b.Text             = ""
+	b.AutoButtonColor  = false
+	b.ZIndex           = 6
+	makeCorner(b, 16)
+	makeStroke(b, Color3.fromRGB(88, 96, 120), 1, 0.45)
+
+	local icon = Instance.new("Frame")
+	icon.Size            = UDim2.fromOffset(44, 44)
+	icon.Position        = UDim2.fromOffset(12, 12)
+	icon.BackgroundColor3 = color
+	icon.ZIndex          = 7
+	icon.Parent          = b
+	makeCorner(icon, 12)
+
+	local iconDot = Instance.new("Frame")
+	iconDot.Size            = UDim2.fromOffset(10, 10)
+	iconDot.Position        = UDim2.fromOffset(17, 17)
+	iconDot.BackgroundColor3 = Color3.fromRGB(245, 248, 255)
+	iconDot.ZIndex          = 8
+	iconDot.Parent          = icon
+	makeCorner(iconDot, 5)
+
+	local t1 = Instance.new("TextLabel")
+	t1.Size               = UDim2.new(1, -12, 0, 24)
+	t1.Position           = UDim2.fromOffset(10, 58)
+	t1.BackgroundTransparency = 1
+	t1.Text               = name
+	t1.Font               = Enum.Font.GothamSemibold
+	t1.TextSize           = 14
+	t1.TextXAlignment     = Enum.TextXAlignment.Left
+	t1.TextColor3         = CONFIG.COLORS.HeaderText
+	t1.ZIndex             = 7
+	t1.Parent             = b
+
+	local t2 = Instance.new("TextLabel")
+	t2.Size               = UDim2.new(1, -12, 0, 16)
+	t2.Position           = UDim2.fromOffset(10, 80)
+	t2.BackgroundTransparency = 1
+	t2.Text               = subtitle
+	t2.Font               = Enum.Font.Gotham
+	t2.TextSize           = 11
+	t2.TextXAlignment     = Enum.TextXAlignment.Left
+	t2.TextColor3         = CONFIG.COLORS.SubText
+	t2.ZIndex             = 7
+	t2.Parent             = b
+
+	b.MouseEnter:Connect(function()
+		quickTween(b, TweenInfo.new(0.12), {BackgroundColor3 = CONFIG.COLORS.CardHover})
+	end)
+	b.MouseLeave:Connect(function()
+		quickTween(b, TweenInfo.new(0.12), {BackgroundColor3 = CONFIG.COLORS.Card})
+	end)
+
+	return b
+end
+
+local MessagesApp = makeAppCard("Messages", "Online",  Color3.fromRGB(72, 132, 255), 1)
+local MapApp      = makeAppCard("Map",      "Offline", Color3.fromRGB(88, 98, 120),  2)
+local TeamApp     = makeAppCard("Teams",    "Offline", Color3.fromRGB(88, 98, 120),  3)
+local ShopApp     = makeAppCard("Shop",     "Offline", Color3.fromRGB(88, 98, 120),  4)
+local NotesApp    = makeAppCard("Notes",    "Offline", Color3.fromRGB(88, 98, 120),  5)
+local SettingsApp = makeAppCard("Settings", "Offline", Color3.fromRGB(88, 98, 120),  6)
+
+MessagesApp.Parent = AppsGrid
+MapApp.Parent      = AppsGrid
+TeamApp.Parent     = AppsGrid
+ShopApp.Parent     = AppsGrid
+NotesApp.Parent    = AppsGrid
+SettingsApp.Parent = AppsGrid
+
+-- Messages page content
+local MsgHeader = Instance.new("Frame")
+MsgHeader.Size                 = UDim2.new(1, 0, 0, 44)
+MsgHeader.Position             = UDim2.fromOffset(0, 0)
+MsgHeader.BackgroundTransparency = 1
+MsgHeader.Parent               = MessagesPage
+
+local BackBtn = Instance.new("TextButton")
+BackBtn.Size            = UDim2.fromOffset(54, 30)
+BackBtn.Position        = UDim2.fromOffset(0, 7)
+BackBtn.BackgroundColor3 = CONFIG.COLORS.Card
+BackBtn.Text            = "<"
+BackBtn.TextColor3      = Color3.new(1,1,1)
+BackBtn.Font            = Enum.Font.GothamBold
+BackBtn.TextSize        = 18
+BackBtn.AutoButtonColor = false
+BackBtn.Parent          = MsgHeader
+makeCorner(BackBtn, 10)
+makeStroke(BackBtn, Color3.fromRGB(88, 96, 120), 1, 0.45)
+
+BackBtn.MouseEnter:Connect(function()
+	quickTween(BackBtn, TweenInfo.new(0.12), {BackgroundColor3 = CONFIG.COLORS.CardHover})
+end)
+BackBtn.MouseLeave:Connect(function()
+	quickTween(BackBtn, TweenInfo.new(0.12), {BackgroundColor3 = CONFIG.COLORS.Card})
+end)
+
+local MsgTitle = Instance.new("TextLabel")
+MsgTitle.Size               = UDim2.new(1, -62, 0, 32)
+MsgTitle.Position           = UDim2.fromOffset(62, 6)
+MsgTitle.BackgroundTransparency = 1
+MsgTitle.Text               = "Messages"
+MsgTitle.TextColor3         = CONFIG.COLORS.HeaderText
+MsgTitle.Font               = Enum.Font.GothamBold
+MsgTitle.TextSize           = 22
+MsgTitle.TextXAlignment     = Enum.TextXAlignment.Left
+MsgTitle.Parent             = MsgHeader
+
+--[[
+  Layout math (PagesHolder height H = 582):
+    Header:           y=0,  h=44
+    FeedContainer:    y=46, h = H - 260 = 322
+    ActionsContainer: y = H - 210 = 372, h = 206  (4 buttons × 44 + 3 gaps × 8 = 200, + 6 margin)
+    Gap feed→actions: 372 - (46+322) = 4 px
+]]
+
+local FeedContainer = Instance.new("Frame")
+FeedContainer.Size            = UDim2.new(1, 0, 1, -260)   -- leaves room for 4-button actions strip
+FeedContainer.Position        = UDim2.fromOffset(0, 46)
+FeedContainer.BackgroundColor3 = Color3.fromRGB(27, 31, 41)
+FeedContainer.Parent          = MessagesPage
+makeCorner(FeedContainer, 14)
+makeStroke(FeedContainer, Color3.fromRGB(88, 96, 120), 1, 0.5)
+
+local Feed = Instance.new("ScrollingFrame")
+Feed.Size                  = UDim2.new(1, -10, 1, -10)
+Feed.Position              = UDim2.fromOffset(5, 5)
+Feed.BackgroundTransparency = 1
+Feed.BorderSizePixel       = 0
+Feed.ScrollBarThickness    = 4
+Feed.AutomaticCanvasSize   = Enum.AutomaticSize.None
+Feed.CanvasSize            = UDim2.fromOffset(0, 0)
+Feed.Parent                = FeedContainer
+
+local FeedLayout = Instance.new("UIListLayout")
+FeedLayout.Padding    = UDim.new(0, 6)
+FeedLayout.SortOrder  = Enum.SortOrder.LayoutOrder
+FeedLayout.Parent     = Feed
+
+-- Actions container — 4 buttons
+local ActionsContainer = Instance.new("Frame")
+ActionsContainer.Size            = UDim2.new(1, 0, 0, 206)   -- 4 × 44 + 3 × 8 gaps + 6 margin
+ActionsContainer.Position        = UDim2.new(0, 0, 1, -210)  -- anchored to bottom
+ActionsContainer.BackgroundTransparency = 1
+ActionsContainer.Parent          = MessagesPage
+
+local ActionLayout = Instance.new("UIListLayout")
+ActionLayout.Padding   = UDim.new(0, 8)
+ActionLayout.Parent    = ActionsContainer
+
+local function makeActionButton(label, color)
+	local b = Instance.new("TextButton")
+	b.Size            = UDim2.new(1, 0, 0, 44)
+	b.BackgroundColor3 = color
+	b.AutoButtonColor = false
+	b.Text            = label
+	b.TextColor3      = Color3.new(1, 1, 1)
+	b.Font            = Enum.Font.GothamBold
+	b.TextSize        = 15
+	b.Parent          = ActionsContainer
+	makeCorner(b, 12)
+	makeStroke(b, Color3.fromRGB(255,255,255), 1, 0.75)
+
+	b.MouseEnter:Connect(function()
+		quickTween(b, TweenInfo.new(0.1), {BackgroundColor3 = lerpColor(color, Color3.new(1,1,1), 0.08)})
+	end)
+	b.MouseLeave:Connect(function()
+		quickTween(b, TweenInfo.new(0.1), {BackgroundColor3 = color})
+	end)
+
+	return b
+end
+
+local HelpBtn       = makeActionButton("Help me!",        CONFIG.COLORS.Danger)
+local FollowBtn     = makeActionButton("Follow me!",      CONFIG.COLORS.Info)
+local TeamBtn       = makeActionButton("Let's team!",     CONFIG.COLORS.Success)
+local StopFollowBtn = makeActionButton("Stop following!", CONFIG.COLORS.StopRed)
+
+--//========================
+--// Page Navigation
+--//========================
+local currentPage  = "HOME"
+local transitioning = false
+
+local function gotoPage(pageName)
+	if transitioning or pageName == currentPage then return end
+	transitioning = true
+
+	local toHome = (pageName == "HOME")
+	local hPos = toHome and UDim2.fromScale(0, 0)  or UDim2.fromScale(-1, 0)
+	local mPos = toHome and UDim2.fromScale(1, 0)  or UDim2.fromScale(0, 0)
+
+	local t1 = quickTween(HomePage,     CONFIG.PAGE_TWEEN, {Position = hPos})
+	local t2 = quickTween(MessagesPage, CONFIG.PAGE_TWEEN, {Position = mPos})
+	t2.Completed:Wait()
+
+	currentPage   = pageName
+	transitioning = false
+end
+
+MessagesApp.MouseButton1Click:Connect(function() gotoPage("MESSAGES") end)
+BackBtn.MouseButton1Click:Connect(function()     gotoPage("HOME")     end)
+
+for _, b in ipairs({MapApp, TeamApp, ShopApp, NotesApp, SettingsApp}) do
+	b.MouseButton1Click:Connect(function()
+		safeNotify("Phone", "This app is currently offline.", 1.5)
+	end)
+end
+
+--//========================
+--// Phone open/close
+--//========================
+local phoneOpen       = false
+local phoneTweenBusy  = false
+
+local function syncMiniText()
+	ToggleMini.Text = phoneOpen and "Close Phone (K)" or "Open Phone (K)"
+end
+
+local function setPhoneOpen(state)
+	if phoneTweenBusy or phoneOpen == state then return end
+	phoneTweenBusy = true
+	phoneOpen      = state
+
+	local pTarget = state and CONFIG.PHONE_ONSCREEN_POS or CONFIG.PHONE_OFFSCREEN_POS
+	local sTarget = pTarget + UDim2.fromOffset(10, 10)
+
+	local pTween = quickTween(Phone, state and CONFIG.OPEN_TWEEN or CONFIG.CLOSE_TWEEN, {Position = pTarget})
+	quickTween(PhoneShadow, state and CONFIG.OPEN_TWEEN or CONFIG.CLOSE_TWEEN, {
+		Position         = sTarget,
+		ImageTransparency = state and 0.55 or 0.75
+	})
+
+	pTween.Completed:Wait()
+	phoneTweenBusy = false
+	syncMiniText()
+end
+
+ToggleMini.MouseButton1Click:Connect(function()
+	setPhoneOpen(not phoneOpen)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if UserInputService:GetFocusedTextBox() then return end
+	if input.KeyCode == CONFIG.KEYBIND then
+		setPhoneOpen(not phoneOpen)
+	end
+end)
+
+--//========================
+--// Feed UI Logic
+--//========================
+local feedCount = 0
+
+local function addFeed(text, tint)
+	feedCount += 1
+
+	local row = Instance.new("Frame")
+	row.Name                 = "Row_" .. feedCount
+	row.Size                 = UDim2.new(1, -4, 0, 36)
+	row.BackgroundColor3     = CONFIG.COLORS.FeedNeutral
+	row.BackgroundTransparency = 1
+	row.Parent               = Feed
+	makeCorner(row, 10)
+	makeStroke(row, Color3.fromRGB(92, 102, 128), 1, 0.6)
+
+	local dot = Instance.new("Frame")
+	dot.Size                 = UDim2.fromOffset(8, 8)
+	dot.Position             = UDim2.fromOffset(10, 14)
+	dot.BackgroundColor3     = tint or CONFIG.COLORS.Accent
+	dot.BackgroundTransparency = 1
+	dot.Parent               = row
+	makeCorner(dot, 4)
+
+	local label = Instance.new("TextLabel")
+	label.Size               = UDim2.new(1, -28, 1, 0)
+	label.Position           = UDim2.fromOffset(24, 0)
+	label.BackgroundTransparency = 1
+	label.Text               = text
+	label.TextWrapped        = false
+	label.TextXAlignment     = Enum.TextXAlignment.Left
+	label.Font               = Enum.Font.Gotham
+	label.TextSize           = 13
+	label.TextColor3         = CONFIG.COLORS.FeedText
+	label.TextTransparency   = 1
+	label.Parent             = row
+
+	quickTween(row,   TweenInfo.new(0.2), {BackgroundTransparency = 0})
+	quickTween(dot,   TweenInfo.new(0.2), {BackgroundTransparency = 0})
+	quickTween(label, TweenInfo.new(0.2), {TextTransparency       = 0})
+
+	task.defer(function()
+		local contentY = FeedLayout.AbsoluteContentSize.Y + 10
+		Feed.CanvasSize     = UDim2.fromOffset(0, contentY)
+		Feed.CanvasPosition = Vector2.new(0, math.max(0, contentY - Feed.AbsoluteSize.Y))
+	end)
+end
+
+--//========================
+--// Animation / Signal Logic
+--//========================
+local lastSignalByKey  = {} -- ["userid:action"] = timestamp
+local hookedAnimators  = {} -- [Animator] = true
+local playerConnections = {} -- cleanup on leave
+
+local activeFx = {} -- [userId] = { highlight=..., billboard=... }
+
+local function clearFx(userId)
+	local d = activeFx[userId]
+	if not d then return end
+	if d.highlight  and d.highlight.Parent  then d.highlight:Destroy()  end
+	if d.billboard  and d.billboard.Parent  then d.billboard:Destroy()  end
+	activeFx[userId] = nil
+end
+
+local function getCharacterRoot(plr)
+	local c = plr.Character
+	if not c then return nil end
+	return c:FindFirstChild("HumanoidRootPart")
+end
+
+-- Red HELP waypoint
+local function applyHelpFx(sender: Player)
+	local char = sender.Character
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+
+	clearFx(sender.UserId)
+
+	local bill = Instance.new("BillboardGui")
+	bill.Name        = "PhoneHelpWaypoint"
+	bill.Adornee     = head
+	bill.Size        = UDim2.fromOffset(240, 84)
+	bill.StudsOffset = Vector3.new(0, 8, 0)
+	bill.MaxDistance = 10000
+	bill.AlwaysOnTop = true
+	bill.LightInfluence = 0
+	bill.Parent      = char
+
+	local bg = Instance.new("Frame")
+	bg.Size               = UDim2.fromScale(1, 1)
+	bg.BackgroundColor3   = CONFIG.COLORS.Danger
+	bg.BackgroundTransparency = 0.12
+	bg.Parent             = bill
+	makeCorner(bg, 12)
+	makeStroke(bg, Color3.fromRGB(255, 255, 255), 1, 0.5)
+
+	local txt = Instance.new("TextLabel")
+	txt.Size               = UDim2.fromScale(1, 1)
+	txt.BackgroundTransparency = 1
+	txt.Text               = "HELP!"
+	txt.Font               = Enum.Font.GothamBlack
+	txt.TextScaled         = true
+	txt.TextColor3         = Color3.fromRGB(255, 255, 255)
+	txt.Parent             = bg
+
+	local arrow = Instance.new("Frame")
+	arrow.Size            = UDim2.fromOffset(26, 26)
+	arrow.Position        = UDim2.new(0.5, -13, 1, -2)
+	arrow.Rotation        = 45
+	arrow.BackgroundColor3 = CONFIG.COLORS.Danger
+	arrow.BackgroundTransparency = 0.12
+	arrow.Parent          = bg
+
+	activeFx[sender.UserId] = activeFx[sender.UserId] or {}
+	activeFx[sender.UserId].billboard = bill
+
+	task.spawn(function()
+		local t0 = os.clock()
+		while bill.Parent and (os.clock() - t0) < CONFIG.HELP_DURATION do
+			local dt = os.clock() - t0
+			bg.BackgroundTransparency    = 0.08 + (math.sin(dt * 8) + 1) * 0.18
+			arrow.BackgroundTransparency = bg.BackgroundTransparency
+			bill.StudsOffset             = Vector3.new(0, 8 + math.sin(dt * 3) * 0.15, 0)
+			RunService.Heartbeat:Wait()
+		end
+		if bill.Parent then bill:Destroy() end
+		if activeFx[sender.UserId] then activeFx[sender.UserId].billboard = nil end
+	end)
+end
+
+-- ============================================================
+-- Gold highlight fx for Follow me! (no billboard, no outline, 20s)
+-- ============================================================
+local function applyFollowFx(sender: Player)
+	local char = sender.Character
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+
+	clearFx(sender.UserId)
+
+	-- gold highlight on sender's character (no outline, no billboard)
+	local hl = Instance.new("Highlight")
+	hl.Name              = "PhoneFollowHL"
+	hl.Adornee           = char
+	hl.DepthMode         = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.FillColor         = CONFIG.COLORS.Gold
+	hl.FillTransparency  = 0.40
+	hl.OutlineTransparency = 1   -- outline hidden; blue highlight already present
+	hl.Parent            = char
+
+	activeFx[sender.UserId] = { highlight = hl }
+
+	task.spawn(function()
+		local t0 = os.clock()
+		while hl.Parent and (os.clock() - t0) < CONFIG.FOLLOW_DURATION do
+			local dt = os.clock() - t0
+			local pulse = (math.sin(dt * 5) + 1) * 0.5
+			hl.FillTransparency = 0.30 + pulse * 0.18
+			RunService.Heartbeat:Wait()
+		end
+		if hl.Parent then hl:Destroy() end
+		if activeFx[sender.UserId] then activeFx[sender.UserId] = nil end
+	end)
+end
+
+-- ============================================================
+-- Highlight fx (Let's team!)
+-- ============================================================
+local function applyHighlightFx(sender: Player, color: Color3, duration: number)
+	local char = sender.Character
+	if not char then return end
+
+	clearFx(sender.UserId)
+
+	local h = Instance.new("Highlight")
+	h.Name              = "PhoneSignalHighlight"
+	h.Adornee           = char
+	h.DepthMode         = Enum.HighlightDepthMode.AlwaysOnTop
+	h.FillColor         = color
+	h.FillTransparency  = 0.35
+	h.OutlineColor      = lerpColor(color, Color3.new(1,1,1), 0.18)
+	h.OutlineTransparency = 0
+	h.Parent            = char
+
+	activeFx[sender.UserId] = activeFx[sender.UserId] or {}
+	activeFx[sender.UserId].highlight = h
+
+	task.spawn(function()
+		local t0 = os.clock()
+		while h.Parent and (os.clock() - t0) < duration do
+			local x = (os.clock() - t0) * 5
+			h.FillTransparency = 0.25 + (math.sin(x) + 1) * 0.12
+			RunService.Heartbeat:Wait()
+		end
+		if h.Parent then h:Destroy() end
+		if activeFx[sender.UserId] then activeFx[sender.UserId].highlight = nil end
+	end)
+end
+
+-- ============================================================
+-- Signal dispatch
+-- ============================================================
+local function processSignal(sender: Player, action: string)
+	local key = ("%d:%s"):format(sender.UserId, action)
+	local now = os.clock()
+	if lastSignalByKey[key] and (now - lastSignalByKey[key] < CONFIG.SIGNAL_DEBOUNCE) then
+		return
+	end
+	lastSignalByKey[key] = now
+
+	if action == "HELP" then
+		addFeed(("%s sent: Help me!"):format(sender.Name),        Color3.fromRGB(255, 165, 165))
+		applyHelpFx(sender)
+
+	elseif action == "FOLLOW" then
+		addFeed(("%s sent: Follow me!"):format(sender.Name),      Color3.fromRGB(255, 224, 120))
+		applyFollowFx(sender)   -- gold waypoint, visible to ALL, no range gate
+
+	elseif action == "TEAM" then
+		addFeed(("%s sent: Let's team!"):format(sender.Name),     Color3.fromRGB(176, 255, 195))
+		applyHighlightFx(sender, CONFIG.COLORS.Success, CONFIG.TEAM_DURATION)
+
+	elseif action == "STOPFOLLOW" then
+		addFeed(("%s sent: Stop following!"):format(sender.Name), Color3.fromRGB(210, 160, 255))
+		clearFx(sender.UserId)  -- removes every active fx on that player
+	end
+end
+
+--//========================
+--// Animator hooks
+--//========================
+local function getAnimatorFromPlayer(plr: Player)
+	local char = plr.Character
+	if not char then return nil end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return nil end
+	return hum:FindFirstChildOfClass("Animator")
+end
+
+local function hookAnimator(plr: Player, animator: Animator)
+	if hookedAnimators[animator] then return end
+	hookedAnimators[animator] = true
+
+	animator.AnimationPlayed:Connect(function(track)
+		local anim = track and track.Animation
+		if not anim then return end
+		local action = ActionByAnim[nAnimId(anim.AnimationId)]
+		if action then
+			processSignal(plr, action)
+		end
+	end)
+end
+
+local function hookPlayer(plr: Player)
+	local charAddedConn
+	local ancestryConn
+
+	local function tryHook()
+		local animator = getAnimatorFromPlayer(plr)
+		if animator then
+			hookAnimator(plr, animator)
+		end
+	end
+
+	tryHook()
+
+	charAddedConn = plr.CharacterAdded:Connect(function()
+		task.wait(CONFIG.PLAYER_REHOOK_DELAY)
+		tryHook()
+	end)
+
+	ancestryConn = plr.AncestryChanged:Connect(function(_, parent)
+		if parent == nil then
+			clearFx(plr.UserId)
+		end
+	end)
+
+	playerConnections[plr] = {charAddedConn, ancestryConn}
+end
+
+local function unhookPlayer(plr: Player)
+	clearFx(plr.UserId)
+	local list = playerConnections[plr]
+	if list then
+		for _, c in ipairs(list) do
+			if typeof(c) == "RBXScriptConnection" then
+				c:Disconnect()
+			end
+		end
+	end
+	playerConnections[plr] = nil
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+	hookPlayer(p)
+end
+Players.PlayerAdded:Connect(hookPlayer)
+Players.PlayerRemoving:Connect(unhookPlayer)
+
+--//========================
+--// Local action triggers
+--//========================
+local function localAnimator(): Animator?
+	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	if not char then return nil end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return nil end
+	return hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+end
+
+local function playActionAnimation(action: string)
+	if not animationConfigured(action) then
+		safeNotify("Phone", ("Animation ID missing for %s"):format(action), 2)
+		addFeed(("Failed to send %s: animation not configured"):format(action), Color3.fromRGB(255, 170, 170))
+		return
+	end
+
+	local animId = CONFIG.ANIMATION_IDS[action]
+	local animator = localAnimator()
+	if not animator then
+		safeNotify("Phone", "No Animator found.", 2)
+		return
+	end
+
+	local anim  = Instance.new("Animation")
+	anim.AnimationId = animId
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(anim)
+	end)
+	if not ok or not track then
+		safeNotify("Phone", "Could not load animation.", 2)
+		return
+	end
+
+	track.Priority = Enum.AnimationPriority.Action
+	track:Play(0.1, 1, 1)
+
+	-- local echo (real signal still comes from detection)
+	if action == "HELP" then
+		addFeed("You sent: Help me! (animation played)",        Color3.fromRGB(255, 170, 170))
+	elseif action == "FOLLOW" then
+		addFeed("You sent: Follow me! (animation played)",      Color3.fromRGB(255, 230, 100))
+	elseif action == "TEAM" then
+		addFeed("You sent: Let's team! (animation played)",     Color3.fromRGB(180, 255, 200))
+	elseif action == "STOPFOLLOW" then
+		addFeed("You sent: Stop following! (animation played)", Color3.fromRGB(210, 165, 255))
+	end
+end
+
+HelpBtn.MouseButton1Click:Connect(function()       playActionAnimation("HELP")       end)
+FollowBtn.MouseButton1Click:Connect(function()     playActionAnimation("FOLLOW")     end)
+TeamBtn.MouseButton1Click:Connect(function()       playActionAnimation("TEAM")       end)
+StopFollowBtn.MouseButton1Click:Connect(function() playActionAnimation("STOPFOLLOW") end)
+
+--//========================
+--// Status updates / startup
+--//========================
+task.spawn(function()
+	while Screen.Parent do
+		TimeLabel.Text = formatClock()
+		task.wait(1)
+	end
+end)
+
+addFeed("Phone loaded. Press K to open/close.",            Color3.fromRGB(145, 200, 255))
+addFeed("Signals are detected from played animations.",    Color3.fromRGB(145, 200, 255))
+addFeed("Set unique animation IDs in CONFIG.ANIMATION_IDS.", Color3.fromRGB(255, 210, 145))
+
+if not animationConfigured("HELP")       or
+   not animationConfigured("FOLLOW")     or
+   not animationConfigured("TEAM")       or
+   not animationConfigured("STOPFOLLOW") then
+	safeNotify("Phone", "Set your 4 animation IDs in CONFIG.ANIMATION_IDS", 4)
+end
+
+syncMiniText()
+print("[SignalPhone v2] Loaded. Press K.")
