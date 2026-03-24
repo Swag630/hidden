@@ -31,7 +31,6 @@ local dodgeLookTarget = nil
 local forcedTarget = nil
 
 -- Players unlocked due to playing the unlock animation.
--- They stay blacklisted until their HP drops to 5 or below.
 local blacklisted = {}
 
 
@@ -340,11 +339,6 @@ local function getPlayingAnimationDodgeDuration(character)
     return nil
 end
 
-local function getHumanoidHP(character)
-    local hum = character and character:FindFirstChildOfClass("Humanoid")
-    return hum and hum.Health or math.huge
-end
-
 -- Returns the closest non-blacklisted enemy player, or nil.
 local function findClosestTarget()
     local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -377,12 +371,9 @@ RunService.RenderStepped:Connect(function(dt)
     updateStatusLabels()
     if not scriptEnabled then return end
 
-    -- Re-allow blacklisted players once their HP drops to 5 or below
+    -- Clean up blacklist entries for players whose character no longer exists
     for plr in pairs(blacklisted) do
-        local char = plr.Character
-        if char and getHumanoidHP(char) <= 5 then
-            blacklisted[plr] = nil
-        elseif not char then
+        if not plr.Character then
             blacklisted[plr] = nil
         end
     end
