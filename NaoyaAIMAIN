@@ -119,7 +119,7 @@ end
 
 local blacklist            = {}       -- [Player] = true when blacklisted
 local BLACKLIST_ANIM_ID    = "78450002510885"
-local BLACKLIST_RANGE      = 15       -- studs — only blacklist if within this distance
+local BLACKLIST_RANGE      = 15000       -- studs — only blacklist if within this distance
 
 -- ═══════════════════════════════════════════════════════════
 -- FOLLOW MODE SYSTEM
