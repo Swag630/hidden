@@ -1,0 +1,241 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VIM = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local BLOCK_KEY      = Enum.KeyCode.F
+local DASH_RANGE     = 20
+local M1_RANGE       = 11
+local M1_BLOCK_DELAY = 0.25
+
+local DASH_ANIMATIONS = {
+	"110978068388232",
+	"132855702748568",
+	"99451940496871",
+	"81708642912019",
+	"130135202362252",
+	"140597320237985",
+	"130284226842903",
+}
+
+local M1_ANIMATIONS = {
+	-- GOJO
+	"127851700400958",
+	"72548435296350",
+	"84547415708554",
+	"95295463826732",
+	-- YUJI
+	"105077924973072",
+	"124862357369335",
+	"81630213087988",
+	-- HAKARI
+	"94588892125071",
+	"97868312130612",
+	"140588454098230",
+	"138826758216894",
+	-- MEGUMI
+	"75337033003776",
+	"138489871864252",
+	"96185406489877",
+	"105287938257399",
+	-- MAHITO
+	"126277739156443",
+	"99710481887795",
+	"121322029260156",
+	"122655618588472",
+	"114985590391235",
+	"108449614447004",
+	"122170399962557",
+	"117638619792450",
+	-- CHOSO
+	"119042572747325",
+	-- TODO
+	"96327114254575",
+	"107029561762376",
+	"117831239064143",
+	"127851700400958",
+	-- HIGARUMA
+	"133240987753043",
+	"130806585141471",
+	"131967150738931",
+	"84442064935420",
+	-- YUTA / ROBOT DUDE
+	"98783064085844",
+	"85148168523745",
+	"108686045412945",
+	"79718433989469",
+	-- NAOYA
+	"101283990868172",
+	"108708446862011",
+	"77583711129628",
+	"116910683335467",
+	-- NANAMI
+	"84359513001979",
+	"79436586236026",
+	"102285403332509",
+	"104137631480391",
+	-- LOCUST GUY
+	"85068785050521",
+	"79086910454958",
+	"108027796023968",
+	"99205259396653",
+	-- SPEAR DUDE
+	"125689391910002",
+	"84080901810314",
+	"139833047658617",
+	"79271374075726",
+}
+
+local M1_SET = {}
+for _, id in ipairs(M1_ANIMATIONS) do M1_SET[id] = true end
+
+local isBlocking  = false
+local lastFPress  = 0
+local m1Routines  = {}
+
+local function getWSCharacter()
+	local chars = workspace:FindFirstChild("Characters")
+	if chars then return chars:FindFirstChild(character.Name) end
+	return nil
+end
+
+local function setBlockAttribute(value)
+	local wsChar = getWSCharacter()
+	if wsChar then wsChar:SetAttribute("BlockTry", value) end
+end
+
+local function setCurrentM1(value)
+	local wsChar = getWSCharacter()
+	if wsChar then wsChar:SetAttribute("CurrentM1", value) end
+end
+
+local function pressF()
+	VIM:SendKeyEvent(true, BLOCK_KEY, false, game)
+end
+
+local function releaseF()
+	VIM:SendKeyEvent(false, BLOCK_KEY, false, game)
+end
+
+local function leftClick()
+	VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+	task.wait(0.05)
+	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+end
+
+local function startBlocking()
+	if isBlocking then return end
+	isBlocking = true
+	setBlockAttribute(true)
+	pressF()
+end
+
+local function stopBlocking()
+	if not isBlocking then return end
+	isBlocking = false
+	setBlockAttribute(false)
+	releaseF()
+end
+
+local function isWithinRange(otherCharacter, range)
+	local otherRoot = otherCharacter:FindFirstChild("HumanoidRootPart")
+	if not otherRoot or not humanoidRootPart then return false end
+	return (otherRoot.Position - humanoidRootPart.Position).Magnitude <= range
+end
+
+local function getPlayingAnimIds(otherCharacter)
+	local ids = {}
+	local humanoid = otherCharacter:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return ids end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then return ids end
+	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+		local id = track.Animation and track.Animation.AnimationId or ""
+		local num = id:match("%d+")
+		if num then ids[num] = true end
+	end
+	return ids
+end
+
+local function m1Routine(animId)
+	if m1Routines[animId] then return end
+	m1Routines[animId] = true
+
+	startBlocking()
+	task.wait(M1_BLOCK_DELAY)
+	stopBlocking()
+	setCurrentM1(1)
+	leftClick()
+	print("[M1 AutoBlock] Blocked -> Punched! (" .. animId .. ")")
+
+	task.wait(0.4)
+	m1Routines[animId] = false
+end
+
+local dashActive = false
+
+RunService.Heartbeat:Connect(function()
+	local wantDashBlock = false
+
+	-- DASH detection
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer == player then continue end
+		local otherChar = otherPlayer.Character
+		if not otherChar or not isWithinRange(otherChar, DASH_RANGE) then continue end
+		local ids = getPlayingAnimIds(otherChar)
+		for _, dashId in ipairs(DASH_ANIMATIONS) do
+			if ids[dashId] then
+				wantDashBlock = true
+				break
+			end
+		end
+		if wantDashBlock then break end
+	end
+
+	-- M1 detection
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer == player then continue end
+		local otherChar = otherPlayer.Character
+		if not otherChar or not isWithinRange(otherChar, M1_RANGE) then continue end
+		local ids = getPlayingAnimIds(otherChar)
+		for animId in pairs(M1_SET) do
+			if ids[animId] and not m1Routines[animId] then
+				task.spawn(m1Routine, animId)
+			end
+		end
+	end
+
+	if wantDashBlock then
+		dashActive = true
+		startBlocking()
+		local now = tick()
+		if now - lastFPress >= 0.1 then
+			pressF()
+			setBlockAttribute(true)
+			lastFPress = now
+		end
+	elseif dashActive then
+		dashActive = false
+		local anyM1Active = false
+		for _, v in pairs(m1Routines) do
+			if v then anyM1Active = true break end
+		end
+		if not anyM1Active then
+			stopBlocking()
+		end
+	end
+end)
+
+player.CharacterAdded:Connect(function(newCharacter)
+	character = newCharacter
+	humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+	isBlocking = false
+	dashActive = false
+	m1Routines = {}
+	print("[DashBlock] Respawned, reset.")
+end)
+
+print("[DashBlock] Loaded. Dash range: " .. DASH_RANGE .. " studs | M1 range: " .. M1_RANGE .. " studs.")
