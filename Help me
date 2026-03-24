@@ -1,0 +1,63 @@
+-- LowHealthAnim LocalScript
+-- Plays animation 95939932538978 when health drops below 40%
+-- 40 second cooldown between plays
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local animator = humanoid:WaitForChild("Animator")
+
+local ANIM_ID = "rbxassetid://95939932538978"
+local HEALTH_THRESHOLD = 0.40  -- 40%
+local COOLDOWN = 40             -- seconds
+
+local animation = Instance.new("Animation")
+animation.AnimationId = ANIM_ID
+
+local animTrack = animator:LoadAnimation(animation)
+local onCooldown = false
+local wasBelow = false
+
+-- Re-load on character respawn
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = newChar:WaitForChild("Humanoid")
+    animator = humanoid:WaitForChild("Animator")
+    animTrack = animator:LoadAnimation(animation)
+    onCooldown = false
+    wasBelow = false
+
+    humanoid.HealthChanged:Connect(function(health)
+        local maxHealth = humanoid.MaxHealth
+        local pct = health / maxHealth
+
+        if pct < HEALTH_THRESHOLD and not onCooldown and not wasBelow then
+            wasBelow = true
+            onCooldown = true
+            animTrack:Play()
+            task.delay(COOLDOWN, function()
+                onCooldown = false
+            end)
+        elseif pct >= HEALTH_THRESHOLD then
+            wasBelow = false
+        end
+    end)
+end)
+
+-- Initial character hook
+humanoid.HealthChanged:Connect(function(health)
+    local maxHealth = humanoid.MaxHealth
+    local pct = health / maxHealth
+
+    if pct < HEALTH_THRESHOLD and not onCooldown and not wasBelow then
+        wasBelow = true
+        onCooldown = true
+        animTrack:Play()
+        task.delay(COOLDOWN, function()
+            onCooldown = false
+        end)
+    elseif pct >= HEALTH_THRESHOLD then
+        wasBelow = false
+    end
+end)
