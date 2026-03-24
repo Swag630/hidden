@@ -114,13 +114,12 @@ end
 -- ═══════════════════════════════════════════════════════════
 -- BLACKLIST SYSTEM
 -- If a player plays animation 78450002510885 within 15 studs,
--- ignore them entirely until their HP drops to 5 or below.
+-- ignore them entirely for the rest of the match.
 -- ═══════════════════════════════════════════════════════════
 
 local blacklist            = {}       -- [Player] = true when blacklisted
 local BLACKLIST_ANIM_ID    = "78450002510885"
 local BLACKLIST_RANGE      = 15       -- studs — only blacklist if within this distance
-local BLACKLIST_RELIST_HP  = 5        -- re-allow when HP drops to this or below
 
 -- ═══════════════════════════════════════════════════════════
 -- FOLLOW MODE SYSTEM
@@ -163,10 +162,6 @@ RunService.Heartbeat:Connect(function()
             if r and h and h.Health > 0 then
 
                 -- ── BLACKLIST logic ─────────────────────────────────
-                if blacklist[p] and h.Health <= BLACKLIST_RELIST_HP then
-                    blacklist[p] = nil
-                    print("[AI] " .. p.Name .. " removed from blacklist — HP at " .. h.Health)
-                end
                 if not blacklist[p] and rootPart then
                     local dist = (rootPart.Position - r.Position).Magnitude
                     if dist <= BLACKLIST_RANGE and isPlayingAnimId(p.Character, BLACKLIST_ANIM_ID) then
