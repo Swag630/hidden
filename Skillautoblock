@@ -1,0 +1,195 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VIM = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local BLOCK_KEY   = Enum.KeyCode.F
+local SKILL_RANGE = 10
+
+local SKILL_ANIMATIONS = {
+	-- CROW CHARMER
+	["92081142332466"]  = { dur = nil, label = "Crow Charmer" },
+	["90781290293652"]  = { dur = nil, label = "Crow Charmer" },
+	["72157009600725"]  = { dur = nil, label = "Crow Charmer" },
+	-- GOJO
+	["137654778575373"] = { dur = nil, label = "Gojo Skill" },
+	["137865634124104"] = { dur = nil, label = "Gojo Skill" },
+	["104749346956269"] = { dur = nil, label = "Gojo Skill" },
+	-- YUJI
+	["77200218033775"]  = { dur = 0.45, label = "Yuji Skill" },
+	["124901309160375"] = { dur = nil, label = "Yuji Skill" },
+	-- HAKARI
+	["82541714192027"]  = { dur = nil, label = "Hakari Skill" },
+	["72063002791216"]  = { dur = nil, label = "Hakari Skill" },
+	["108123475959041"] = { dur = nil, label = "Hakari Skill" },
+	-- MEGUMI
+	["116432619539029"] = { dur = nil, label = "Megumi Skill" },
+	-- MAHITO
+	["103493656287292"] = { dur = nil, label = "Mahito Skill" },
+	["89092734635186"]  = { dur = nil, label = "Mahito Skill" },
+	-- CHOSO
+	["127171275866632"] = { dur = nil, label = "Choso Skill" },
+	["84039122607068"]  = { dur = nil, label = "Choso Skill" },
+	-- TODO (0.8s then punch)
+	["94720627091769"]  = { dur = 0.8, label = "Todo Skill" },
+	["121343824534765"] = { dur = nil, label = "Todo Skill" },
+	-- HIGARUMA
+	["89652378115594"]  = { dur = 1, label = "Higaruma Skill" },
+	["135411487367370"] = { dur = nil, label = "Higaruma Skill" },
+	-- YUTA (0.6s then punch)
+	["104824728032437"] = { dur = 0.6, label = "Yuta Skill" },
+	["89582140026963"]  = { dur = nil, label = "Yuta Skill" },
+	["117178057848472"] = { dur = nil, label = "Yuta Skill" },
+	["88911658010897"]  = { dur = nil, label = "Yuta Skill" },
+	-- PUPPET MASTER
+	["120136894011461"] = { dur = nil, label = "Puppet Master Skill" },
+	["93901924492394"]  = { dur = nil, label = "Puppet Master Skill" },
+	-- NAOYA
+	["105121164520635"] = { dur = nil, label = "Naoya Skill" },
+	["86045680364061"]  = { dur = nil, label = "Naoya Skill" },
+	-- NANAMI
+	["81210313723714"]  = { dur = nil, label = "Nanami Skill" },
+	["100811576955331"] = { dur = nil, label = "Nanami Skill" },
+	["113359849246757"] = { dur = nil, label = "Nanami Skill" },
+	["130957217409359"] = { dur = nil, label = "Nanami Skill" },
+	-- LOCUST GUY
+	["129678103897608"] = { dur = 1.25, label = "Locust Guy Skill" },
+	["134777193523837"] = { dur = 0.45, label = "Locust Guy Skill" },
+	-- ASPIRING MANGAKA
+	["103013818601982"] = { dur = nil, label = "Mangaka Skill" },
+	["79860101129549"]  = { dur = nil, label = "Mangaka Skill" },
+}
+
+local isBlocking    = false
+local skillRoutines = {}
+
+-- ── Helpers ───────────────────────────────────────────────────────────────────
+local function getWSCharacter()
+	local chars = workspace:FindFirstChild("Characters")
+	if chars then return chars:FindFirstChild(character.Name) end
+	return nil
+end
+
+local function setBlockAttribute(value)
+	local wsChar = getWSCharacter()
+	if wsChar then wsChar:SetAttribute("BlockTry", value) end
+end
+
+local function pressF()   VIM:SendKeyEvent(true,  BLOCK_KEY, false, game) end
+local function releaseF() VIM:SendKeyEvent(false, BLOCK_KEY, false, game) end
+
+local function leftClick()
+	VIM:SendMouseButtonEvent(0, 0, 0, true,  game, 0)
+	task.wait(0.05)
+	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+end
+
+local function startBlocking()
+	if isBlocking then return end
+	isBlocking = true
+	setBlockAttribute(true)
+	pressF()
+end
+
+local function stopBlocking()
+	if not isBlocking then return end
+	isBlocking = false
+	setBlockAttribute(false)
+	releaseF()
+end
+
+local function isWithinRange(otherChar, range)
+	local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
+	if not otherRoot or not humanoidRootPart then return false end
+	return (otherRoot.Position - humanoidRootPart.Position).Magnitude <= range
+end
+
+local function getAnimTrack(otherChar, targetId)
+	local humanoid = otherChar:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return nil end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then return nil end
+	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+		local id = track.Animation and track.Animation.AnimationId or ""
+		local num = id:match("%d+")
+		if num == targetId then return track end
+	end
+	return nil
+end
+
+local function getPlayingAnimIds(otherChar)
+	local ids = {}
+	local humanoid = otherChar:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return ids end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then return ids end
+	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+		local id = track.Animation and track.Animation.AnimationId or ""
+		local num = id:match("%d+")
+		if num then ids[num] = true end
+	end
+	return ids
+end
+
+-- ── Skill routine ─────────────────────────────────────────────────────────────
+local function skillRoutine(animId, info, otherChar)
+	if skillRoutines[animId] then return end
+	skillRoutines[animId] = true
+
+	startBlocking()
+
+	if info.dur then
+		task.wait(info.dur)
+	else
+		local elapsed = 0
+		local timeout = 5
+
+		while elapsed < timeout do
+			local track = getAnimTrack(otherChar, animId)
+			if not track then break end
+			if track.Length > 0 and track.TimePosition >= track.Length - 0.45 then
+				break
+			end
+			local dt = RunService.Heartbeat:Wait()
+			elapsed += dt
+		end
+	end
+
+	stopBlocking()
+	task.wait(0.05)
+	leftClick()
+	print("[Skill AutoBlock] Blocked -> Punched! | " .. info.label .. " (" .. animId .. ")")
+
+	task.wait(0.5)
+	skillRoutines[animId] = false
+end
+
+-- ── Heartbeat ─────────────────────────────────────────────────────────────────
+RunService.Heartbeat:Connect(function()
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer == player then continue end
+		local otherChar = otherPlayer.Character
+		if not otherChar or not isWithinRange(otherChar, SKILL_RANGE) then continue end
+
+		local ids = getPlayingAnimIds(otherChar)
+		for animId, info in pairs(SKILL_ANIMATIONS) do
+			if ids[animId] and not skillRoutines[animId] then
+				task.spawn(skillRoutine, animId, info, otherChar)
+			end
+		end
+	end
+end)
+
+-- ── Respawn ───────────────────────────────────────────────────────────────────
+player.CharacterAdded:Connect(function(newCharacter)
+	character = newCharacter
+	humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+	isBlocking    = false
+	skillRoutines = {}
+	print("[SkillBlock] Respawned, reset.")
+end)
+
+print("[SkillBlock] Loaded. Skill AutoBlock always ON. Range: " .. SKILL_RANGE .. " studs.")
