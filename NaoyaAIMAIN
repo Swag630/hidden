@@ -1,0 +1,982 @@
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║               AIFighter.lua — FINAL DEFINITIVE VERSION          ║
+-- ║         LocalScript / StarterCharacterScripts / Executor        ║
+-- ║                  Starts automatically on run                    ║
+-- ║                  Emergency stop: Shift + P                      ║
+-- ╠══════════════════════════════════════════════════════════════════╣
+-- ║  SKILL MAP                                                       ║
+-- ║  M1  Left Click — max 4 per combo, min 3. Range: 10 studs.      ║
+-- ║  3   Deceive Strike — COMBO STARTER. Dash spam. Range: 16.      ║
+-- ║  2   Bleedout — COMBO EXTENDER. Range: 14 studs. CD: 20s.       ║
+-- ║  4   Cursory Impact — COMBO ENDER. Range: 5 studs. CD: 16s.     ║
+-- ║  1   Proj. Breaker — COMBO ENDER. Range: 7 studs. CD: none.     ║
+-- ║  R   Teleport — GAP CLOSER. CD: 18s.                            ║
+-- ║  Q   Dash — GAP CLOSER. 2 charges, CD: 7s.                      ║
+-- ║  G   Ultimate — G → jump → 1. CD: 40s.                          ║
+-- ╠══════════════════════════════════════════════════════════════════╣
+-- ║  FULL COMBO SEQUENCE                                             ║
+-- ║  3 spam (×3 dash) → M1×3 → 2 (extender) → Q×2 (chase)          ║
+-- ║  → M1×3 → 4 or 1 (ender)                                        ║
+-- ║                                                                  ║
+-- ║  SHORT COMBO (2 on CD)                                           ║
+-- ║  3 spam → M1×3 or M1×4 → 4 or 1                                 ║
+-- ║                                                                  ║
+-- ║  CLOSE COMBO (already ≤5 studs, skip skill 3)                   ║
+-- ║  M1×3 → 2 → Q×2 → M1×3 → 4 or 1                                ║
+-- ║                                                                  ║
+-- ║  DUMP COMBO (all skills on CD)                                   ║
+-- ║  M1×4                                                            ║
+-- ╠══════════════════════════════════════════════════════════════════╣
+-- ║  FOLLOW MODE                                                     ║
+-- ║  Anim 70683985130739 → stop attacking, shadow 4 studs behind    ║
+-- ║  Anim 93265997037616 → exit follow mode, resume combat          ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+
+-- ═══════════════════════════════════════════════════════════
+-- SERVICES
+-- ═══════════════════════════════════════════════════════════
+
+local Players    = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VIM        = game:GetService("VirtualInputManager")
+local UIS        = game:GetService("UserInputService")
+
+-- ═══════════════════════════════════════════════════════════
+-- PLAYER REFERENCES
+-- ═══════════════════════════════════════════════════════════
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid  = character:WaitForChild("Humanoid")
+local rootPart  = character:WaitForChild("HumanoidRootPart")
+
+-- Rebind on respawn
+player.CharacterAdded:Connect(function(c)
+    character = c
+    humanoid  = c:WaitForChild("Humanoid")
+    rootPart  = c:WaitForChild("HumanoidRootPart")
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- CONFIGURATION — Every value in one place
+-- ═══════════════════════════════════════════════════════════
+
+-- Skill ranges in studs
+local RANGE_M1        = 10   -- fist range
+local RANGE_SKILL1    = 7    -- Projection Breaker
+local RANGE_SKILL2    = 7    -- Bleedout (INCREASED — fires from further)
+local RANGE_SKILL3    = 16   -- Deceive Strike engage range
+local RANGE_CLOSE     = 6    -- skip skill 3, go straight in
+local RANGE_TELEPORT  = 35   -- use R when beyond this
+local RANGE_DASH_IN   = 12   -- dash with Q when in this band
+
+-- Cooldowns in seconds
+local CD_R  = 18
+local CD_Q  = 7
+local CD_S1 = 0
+local CD_S2 = 20
+local CD_S3 = 0
+local CD_S4 = 16
+local CD_G  = 40
+
+-- Timing in seconds
+local M1_GAP       = 0.13  -- gap between M1 clicks (very snappy)
+local SKILL_GAP    = 0.10  -- gap between skill spam taps
+local COMBO_GAP    = 0.10  -- gap between combo phases
+local DASH_GAP     = 0.20  -- gap between Q dashes
+local THINK_RATE   = 0.06  -- AI decision rate
+
+-- Other
+local DASH_MAX_CHARGES = 2
+local ULT_HP_THRESHOLD = 0.35  -- use G below 35% HP
+local WANDER_DIST      = 14
+local WANDER_INTERVAL  = 2.0
+
+-- ═══════════════════════════════════════════════════════════
+-- SHARED ANIMATION HELPER
+-- Checks whether a character is currently playing a given
+-- animation ID (matched by the trailing numeric ID).
+-- Used by both the blacklist and follow-mode systems.
+-- ═══════════════════════════════════════════════════════════
+
+local function isPlayingAnimId(char, animIdStr)
+    local animator = char:FindFirstChildOfClass("Animator")
+        or (char:FindFirstChildOfClass("Humanoid")
+        and char:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator"))
+    if not animator then return false end
+    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+        local id = tostring(track.Animation.AnimationId):match("%d+$")
+        if id == animIdStr then return true end
+    end
+    return false
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- BLACKLIST SYSTEM
+-- If a player plays animation 78450002510885 within 15 studs,
+-- ignore them entirely until their HP drops to 5 or below.
+-- ═══════════════════════════════════════════════════════════
+
+local blacklist            = {}       -- [Player] = true when blacklisted
+local BLACKLIST_ANIM_ID    = "78450002510885"
+local BLACKLIST_RANGE      = 15       -- studs — only blacklist if within this distance
+local BLACKLIST_RELIST_HP  = 5        -- re-allow when HP drops to this or below
+
+-- ═══════════════════════════════════════════════════════════
+-- FOLLOW MODE SYSTEM
+-- Animation 70683985130739 → enter follow mode:
+--   stop all attacks, move to 4 studs directly behind
+--   the target's back (opposite of their LookVector).
+-- Animation 93265997037616 → exit follow mode:
+--   resume normal free combat immediately.
+-- ═══════════════════════════════════════════════════════════
+
+local followMode          = {}        -- [Player] = true when AI must shadow them
+local FOLLOW_ANIM_ID      = "70683985130739"
+local STOP_FOLLOW_ANIM_ID = "93265997037616"
+local FOLLOW_BEHIND_DIST  = 4         -- studs behind the target's back
+
+-- Returns the current follow-mode target (first found), or nil.
+local function getFollowTarget()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and followMode[p] then
+            if p.Character then
+                local h = p.Character:FindFirstChildOfClass("Humanoid")
+                local r = p.Character:FindFirstChild("HumanoidRootPart")
+                if r and h and h.Health > 0 then
+                    return p, p.Character
+                end
+            end
+            -- Character gone — clear stale entry
+            followMode[p] = nil
+        end
+    end
+    return nil, nil
+end
+
+-- Runs every frame — handles all per-player animation state transitions
+RunService.Heartbeat:Connect(function()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local r = p.Character:FindFirstChild("HumanoidRootPart")
+            local h = p.Character:FindFirstChildOfClass("Humanoid")
+            if r and h and h.Health > 0 then
+
+                -- ── BLACKLIST logic ─────────────────────────────────
+                if blacklist[p] and h.Health <= BLACKLIST_RELIST_HP then
+                    blacklist[p] = nil
+                    print("[AI] " .. p.Name .. " removed from blacklist — HP at " .. h.Health)
+                end
+                if not blacklist[p] and rootPart then
+                    local dist = (rootPart.Position - r.Position).Magnitude
+                    if dist <= BLACKLIST_RANGE and isPlayingAnimId(p.Character, BLACKLIST_ANIM_ID) then
+                        blacklist[p] = true
+                        print("[AI] " .. p.Name .. " blacklisted — dodge anim within " .. BLACKLIST_RANGE .. " studs")
+                    end
+                end
+
+                -- ── FOLLOW MODE logic ────────────────────────────────
+                if not followMode[p] then
+                    -- Enter follow mode if the trigger animation is detected
+                    if isPlayingAnimId(p.Character, FOLLOW_ANIM_ID) then
+                        followMode[p] = true
+                        -- Abort any running combo immediately so we stop attacking
+                        busy   = true   -- prevent new combos from starting
+                        killed = true   -- signal running combo chains to abort
+                        task.delay(0.05, function()
+                            -- Reset flags after brief pause so follow loop can run cleanly
+                            busy   = false
+                            killed = false
+                        end)
+                        print("[AI] FOLLOW MODE ON — shadowing " .. p.Name .. " (anim 70683985130739)")
+                    end
+                else
+                    -- Exit follow mode if the release animation is detected
+                    if isPlayingAnimId(p.Character, STOP_FOLLOW_ANIM_ID) then
+                        followMode[p] = nil
+                        print("[AI] FOLLOW MODE OFF — resuming combat on " .. p.Name .. " (anim 93265997037616)")
+                    end
+                end
+
+            else
+                -- Dead or gone — clear both states
+                blacklist[p]  = nil
+                followMode[p] = nil
+            end
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- COOLDOWN SYSTEM
+-- ═══════════════════════════════════════════════════════════
+
+local timers = { r=0, q=0, s1=0, s2=0, s3=0, s4=0, g=0 }
+local cdValues = { r=CD_R, q=CD_Q, s1=CD_S1, s2=CD_S2, s3=CD_S3, s4=CD_S4, g=CD_G }
+
+local dashCharges = DASH_MAX_CHARGES
+local dashResetAt = 0
+
+local function cdReady(k)
+    return timers[k] <= 0
+end
+
+local function cdUse(k)
+    timers[k] = cdValues[k]
+end
+
+local function cdForceReady(k)
+    timers[k] = 0
+end
+
+local function cdTickAll(dt)
+    for k in pairs(timers) do
+        timers[k] = math.max(0, timers[k] - dt)
+    end
+end
+
+local function dashAvailable()
+    if tick() - dashResetAt >= CD_Q then
+        dashCharges = DASH_MAX_CHARGES
+        dashResetAt = tick()
+    end
+    return dashCharges > 0
+end
+
+local function useDashCharge()
+    if dashAvailable() then
+        dashCharges = dashCharges - 1
+        return true
+    end
+    return false
+end
+
+local function allOffensiveOnCD()
+    return not cdReady("s1") and not cdReady("s2")
+       and not cdReady("s3") and not cdReady("s4")
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- INPUT LAYER
+-- VirtualInputManager — works in executor scripts.
+-- ═══════════════════════════════════════════════════════════
+
+local function keyDown(kc)
+    pcall(function() VIM:SendKeyEvent(true, kc, false, game) end)
+end
+
+local function keyUp(kc)
+    pcall(function() VIM:SendKeyEvent(false, kc, false, game) end)
+end
+
+local function tapKey(kc, holdDur)
+    holdDur = holdDur or 0.08
+    keyDown(kc)
+    task.delay(holdDur, function() keyUp(kc) end)
+end
+
+local function tapLMB()
+    pcall(function()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local cx = vp.X * 0.5
+        local cy = vp.Y * 0.5
+        VIM:SendMouseButtonEvent(cx, cy, 0, true,  game, 1)
+        task.delay(0.06, function()
+            VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+        end)
+    end)
+end
+
+local function triggerJump()
+    if humanoid then humanoid.Jump = true end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- TARGETING SYSTEM
+-- getNearest() — combat target (skips blacklisted + follow-mode players)
+-- ═══════════════════════════════════════════════════════════
+
+local function getNearest()
+    if not rootPart then return nil, math.huge end
+    local best, bestDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        -- Skip self, blacklisted players, AND players we're currently shadowing
+        if p ~= player and p.Character and not blacklist[p] and not followMode[p] then
+            local r = p.Character:FindFirstChild("HumanoidRootPart")
+            local h = p.Character:FindFirstChildOfClass("Humanoid")
+            if r and h and h.Health > 0 then
+                local d = (rootPart.Position - r.Position).Magnitude
+                if d < bestDist then
+                    bestDist = d
+                    best     = p.Character
+                end
+            end
+        end
+    end
+    return best, bestDist
+end
+
+local function getEnemyRoot(target)
+    if not target then return nil end
+    return target:FindFirstChild("HumanoidRootPart")
+end
+
+local function distanceTo(target)
+    if not target or not rootPart then return math.huge end
+    local r = getEnemyRoot(target)
+    if not r then return math.huge end
+    return (rootPart.Position - r.Position).Magnitude
+end
+
+local function faceToward(target)
+    if not rootPart or not target then return end
+    local r = getEnemyRoot(target)
+    if not r then return end
+    local dx = r.Position.X - rootPart.Position.X
+    local dz = r.Position.Z - rootPart.Position.Z
+    local flat = Vector3.new(dx, 0, dz)
+    if flat.Magnitude > 0.05 then
+        rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + flat.Unit)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- MOVEMENT SYSTEM
+-- WalkToPoint updated every Heartbeat.
+-- Follow mode overrides normal chase — positions AI exactly
+-- FOLLOW_BEHIND_DIST studs behind the follow target's back.
+-- ═══════════════════════════════════════════════════════════
+
+local moveTarget = nil  -- Vector3 or nil
+
+RunService.Heartbeat:Connect(function()
+    if not humanoid or humanoid.Health <= 0 then return end
+    if moveTarget then
+        humanoid.WalkToPoint = moveTarget
+    end
+end)
+
+local function pushTowardEnemy()
+    local t, _ = getNearest()
+    if not t then return end
+    local r = getEnemyRoot(t)
+    if r and rootPart then
+        faceToward(t)
+        moveTarget = r.Position
+    end
+end
+
+local function plantFeet()
+    moveTarget = nil
+    if humanoid and rootPart then
+        humanoid.WalkToPoint = rootPart.Position
+    end
+end
+
+-- Computes the position 4 studs directly behind a character's back.
+-- "Behind" = opposite of the character's CFrame LookVector, on the XZ plane.
+local function behindPosition(targetRoot)
+    if not targetRoot then return nil end
+    local look  = targetRoot.CFrame.LookVector
+    local flatLook = Vector3.new(look.X, 0, look.Z)
+    if flatLook.Magnitude < 0.001 then
+        flatLook = Vector3.new(0, 0, 1)
+    end
+    flatLook = flatLook.Unit
+    -- Position is directly behind: subtract look direction
+    return targetRoot.Position - flatLook * FOLLOW_BEHIND_DIST
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- WANDER SYSTEM
+-- ═══════════════════════════════════════════════════════════
+
+local wanderAngle     = 0
+local wanderChangeAt  = 0
+
+local function doWander()
+    local now = tick()
+    if now > wanderChangeAt then
+        wanderAngle    = math.random() * math.pi * 2
+        wanderChangeAt = now + WANDER_INTERVAL + math.random() * 1.5
+        if math.random() < 0.15 then
+            task.delay(0.1, function() triggerJump() end)
+        end
+    end
+    if rootPart then
+        local origin = rootPart.Position
+        local dest = origin + Vector3.new(
+            math.sin(wanderAngle) * WANDER_DIST,
+            0,
+            math.cos(wanderAngle) * WANDER_DIST
+        )
+        moveTarget = dest
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- COMBO STATE
+-- ═══════════════════════════════════════════════════════════
+
+busy   = false   -- true while a combo is executing (global so follow-mode abort can set it)
+killed = false   -- set true on death or follow-mode interrupt to abort combo
+
+local function isAlive()
+    return humanoid ~= nil
+        and humanoid.Health > 0
+        and not killed
+end
+
+local function endCombo()
+    busy = false
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- ATOMIC ACTIONS
+-- ═══════════════════════════════════════════════════════════
+
+local function doOneLMB(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    tapLMB()
+    task.delay(M1_GAP, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doM1Chain(n, onDone)
+    if not isAlive() then endCombo(); return end
+    local fired = 0
+    local function step()
+        if not isAlive() then endCombo(); return end
+        if fired >= n then
+            if onDone then onDone() end
+            return
+        end
+        fired = fired + 1
+        pushTowardEnemy()
+        print(string.format("[AI] M1 %d/%d", fired, n))
+        tapLMB()
+        task.delay(M1_GAP, step)
+    end
+    step()
+end
+
+local function doSkill3Spam(times, onDone)
+    if not isAlive() then endCombo(); return end
+    cdUse("s3")
+    local fired = 0
+    local function step()
+        if not isAlive() then endCombo(); return end
+        if fired >= times then
+            if onDone then onDone() end
+            return
+        end
+        fired = fired + 1
+        pushTowardEnemy()
+        print(string.format("[AI] Skill 3 spam %d/%d", fired, times))
+        tapKey(Enum.KeyCode.Three, 0.08)
+        task.delay(SKILL_GAP, step)
+    end
+    step()
+end
+
+local function doSkill2(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    local _, dist = getNearest()
+    print(string.format("[AI] Skill 2 — Bleedout extender (%.1f studs)", dist))
+    tapKey(Enum.KeyCode.Two, 0.08)
+    cdUse("s2")
+    task.delay(COMBO_GAP + 0.1, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doSkill4(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    local _, dist = getNearest()
+    print(string.format("[AI] Skill 4 — Cursory Impact ender (%.1f studs)", dist))
+    tapKey(Enum.KeyCode.Four, 0.08)
+    cdUse("s4")
+    task.delay(0.18, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doSkill1(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    local _, dist = getNearest()
+    print(string.format("[AI] Skill 1 — Projection Breaker ender (%.1f studs)", dist))
+    tapKey(Enum.KeyCode.One, 0.08)
+    cdUse("s1")
+    task.delay(0.18, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doEnder(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    if cdReady("s4") then
+        doSkill4(onDone)
+    elseif cdReady("s1") then
+        doSkill1(onDone)
+    else
+        print("[AI] Enders on CD — capping with M1")
+        tapLMB()
+        task.delay(M1_GAP, function()
+            if onDone then onDone() end
+        end)
+    end
+end
+
+local function doQDash(onDone)
+    if not isAlive() then endCombo(); return end
+    local t, _ = getNearest()
+    if t then faceToward(t) end
+    if dashAvailable() then
+        pushTowardEnemy()
+        print("[AI] Q dash → chasing")
+        tapKey(Enum.KeyCode.Q, 0.08)
+        useDashCharge()
+    else
+        print("[AI] Q on CD — skipping dash")
+    end
+    task.delay(DASH_GAP, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doDoubleQDash(onDone)
+    if not isAlive() then endCombo(); return end
+    local t1, _ = getNearest()
+    if t1 then faceToward(t1) end
+    pushTowardEnemy()
+    print("[AI] Q dash #1 (post-2 chase)")
+    tapKey(Enum.KeyCode.Q, 0.08)
+    useDashCharge()
+
+    task.delay(DASH_GAP, function()
+        if not isAlive() then endCombo(); return end
+        local t2, _ = getNearest()
+        if t2 then faceToward(t2) end
+        pushTowardEnemy()
+        print("[AI] Q dash #2 (post-2 chase)")
+        tapKey(Enum.KeyCode.Q, 0.08)
+        useDashCharge()
+        task.delay(DASH_GAP, function()
+            if onDone then onDone() end
+        end)
+    end)
+end
+
+local function doTeleport(onDone)
+    if not isAlive() then endCombo(); return end
+    local t, _ = getNearest()
+    if t then faceToward(t) end
+    print("[AI] R — Teleport")
+    tapKey(Enum.KeyCode.R, 0.08)
+    cdUse("r")
+    task.delay(0.38, function()
+        if onDone then onDone() end
+    end)
+end
+
+local function doUltimate(onDone)
+    if not isAlive() then endCombo(); return end
+    pushTowardEnemy()
+    print("[AI] ★ ULTIMATE — G → jump → 1 ★")
+    tapKey(Enum.KeyCode.G, 0.08)
+    cdUse("g")
+    task.delay(0.38, function()
+        if not isAlive() then endCombo(); return end
+        triggerJump()
+        task.delay(0.32, function()
+            if not isAlive() then endCombo(); return end
+            print("[AI] Ultimate followup: 1")
+            tapKey(Enum.KeyCode.One, 0.08)
+            cdUse("s1")
+            task.delay(0.2, function()
+                if onDone then onDone() end
+            end)
+        end)
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- COMBO SEQUENCES
+-- ═══════════════════════════════════════════════════════════
+
+local function runFullCombo()
+    if busy then return end
+    busy   = true
+    killed = false
+    print("[AI] ══════════ FULL COMBO START ══════════")
+
+    doSkill3Spam(3, function()
+        if not isAlive() then endCombo(); return end
+        doM1Chain(3, function()
+            if not isAlive() then endCombo(); return end
+            if cdReady("s2") then
+                doSkill2(function()
+                    if not isAlive() then endCombo(); return end
+                    doDoubleQDash(function()
+                        if not isAlive() then endCombo(); return end
+                        doM1Chain(3, function()
+                            if not isAlive() then endCombo(); return end
+                            doEnder(function()
+                                print("[AI] ══════════ FULL COMBO END ══════════")
+                                endCombo()
+                            end)
+                        end)
+                    end)
+                end)
+            else
+                print("[AI] Skill 2 on CD — truncating to short combo")
+                doEnder(function()
+                    print("[AI] ══════════ TRUNCATED COMBO END ══════════")
+                    endCombo()
+                end)
+            end
+        end)
+    end)
+end
+
+local function runShortCombo()
+    if busy then return end
+    busy   = true
+    killed = false
+    local m1count = math.random(3, 4)
+    print(string.format("[AI] ══════════ SHORT COMBO ×%d START ══════════", m1count))
+
+    doSkill3Spam(3, function()
+        if not isAlive() then endCombo(); return end
+        doM1Chain(m1count, function()
+            if not isAlive() then endCombo(); return end
+            if cdReady("s2") and m1count == 3 then
+                print("[AI] 2 came off CD mid-short — using as extender!")
+                doSkill2(function()
+                    if not isAlive() then endCombo(); return end
+                    doDoubleQDash(function()
+                        if not isAlive() then endCombo(); return end
+                        doM1Chain(3, function()
+                            if not isAlive() then endCombo(); return end
+                            doEnder(function()
+                                print("[AI] ══════════ SHORT→FULL COMBO END ══════════")
+                                endCombo()
+                            end)
+                        end)
+                    end)
+                end)
+            else
+                doEnder(function()
+                    print("[AI] ══════════ SHORT COMBO END ══════════")
+                    endCombo()
+                end)
+            end
+        end)
+    end)
+end
+
+local function runCloseCombo()
+    if busy then return end
+    busy   = true
+    killed = false
+    print("[AI] ══════════ CLOSE COMBO START ══════════")
+
+    doM1Chain(3, function()
+        if not isAlive() then endCombo(); return end
+        if cdReady("s2") then
+            doSkill2(function()
+                if not isAlive() then endCombo(); return end
+                doDoubleQDash(function()
+                    if not isAlive() then endCombo(); return end
+                    doM1Chain(3, function()
+                        if not isAlive() then endCombo(); return end
+                        doEnder(function()
+                            print("[AI] ══════════ CLOSE COMBO END ══════════")
+                            endCombo()
+                        end)
+                    end)
+                end)
+            end)
+        else
+            print("[AI] Skill 2 on CD — close short finisher")
+            doEnder(function()
+                print("[AI] ══════════ CLOSE SHORT COMBO END ══════════")
+                endCombo()
+            end)
+        end
+    end)
+end
+
+local function runDumpCombo()
+    if busy then return end
+    busy   = true
+    killed = false
+    print("[AI] ══════════ DUMP COMBO M1×4 ══════════")
+    doM1Chain(4, function()
+        print("[AI] ══════════ DUMP COMBO END ══════════")
+        endCombo()
+    end)
+end
+
+local function runUltimate()
+    if busy then return end
+    busy   = true
+    killed = false
+    doUltimate(function()
+        print("[AI] ══════════ ULTIMATE END ══════════")
+        endCombo()
+    end)
+end
+
+local function runTeleport()
+    if busy then return end
+    busy = true
+    doTeleport(function() endCombo() end)
+end
+
+local function runQDash(target)
+    if busy then return end
+    if not dashAvailable() then return end
+    busy = true
+    if target then faceToward(target) end
+    doQDash(function() endCombo() end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SITUATION CLASSIFIER
+-- ═══════════════════════════════════════════════════════════
+
+local SIT = {
+    FAR         = "far",
+    MEDIUM_FAR  = "medium_far",
+    MEDIUM      = "medium",
+    ATTACK      = "attack",
+    CLOSE       = "close",
+}
+
+local function classify(dist)
+    if dist > RANGE_TELEPORT  then return SIT.FAR         end
+    if dist > RANGE_SKILL3    then return SIT.MEDIUM_FAR  end
+    if dist > RANGE_M1        then return SIT.MEDIUM      end
+    if dist > RANGE_CLOSE     then return SIT.ATTACK      end
+    return SIT.CLOSE
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SKILL 2 AGGRESSIVE USE
+-- ═══════════════════════════════════════════════════════════
+
+local skill2UsedAt = 0
+local function shouldUseSkill2Standalone(dist)
+    return cdReady("s2")
+        and dist <= RANGE_SKILL2
+        and (tick() - skill2UsedAt) > CD_S2 * 0.9
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- MAIN DECISION LOOP
+-- ═══════════════════════════════════════════════════════════
+
+local aiEnabled  = true
+local thinkTimer = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    if not aiEnabled then return end
+    if not humanoid or humanoid.Health <= 0 then return end
+
+    cdTickAll(dt)
+
+    -- ── FOLLOW MODE MOVEMENT (highest priority, every frame) ──
+    -- If any player is in follow mode, shadow them — no combat.
+    local followPlayer, followChar = getFollowTarget()
+    if followPlayer and followChar then
+        local followRoot = followChar:FindFirstChild("HumanoidRootPart")
+        if followRoot and rootPart then
+            local dest = behindPosition(followRoot)
+            if dest then
+                moveTarget = dest
+                -- Face the same direction the target is facing
+                -- (walk alongside them, looking the same way)
+                local look  = followRoot.CFrame.LookVector
+                local flatLook = Vector3.new(look.X, 0, look.Z)
+                if flatLook.Magnitude > 0.05 then
+                    rootPart.CFrame = CFrame.lookAt(
+                        rootPart.Position,
+                        rootPart.Position + flatLook.Unit
+                    )
+                end
+            end
+        end
+        -- Do NOT fall through to combat decisions
+        return
+    end
+
+    -- ── NORMAL MOVEMENT (every frame) ─────────────────────────
+    local mt, md = getNearest()
+    if mt then
+        local mr = getEnemyRoot(mt)
+        if mr then
+            faceToward(mt)
+            if md > 3 then
+                moveTarget = mr.Position
+            end
+        end
+    else
+        doWander()
+    end
+
+    -- ── DECISIONS (throttled) ──────────────────────────────────
+    thinkTimer = thinkTimer + dt
+    if thinkTimer < THINK_RATE then return end
+    thinkTimer = 0
+
+    if busy then return end
+
+    local target, dist = getNearest()
+    if not target then return end
+
+    faceToward(target)
+
+    local hpPct = humanoid.Health / humanoid.MaxHealth
+    local sit   = classify(dist)
+
+    -- PRIORITY 1: Ultimate
+    if hpPct < ULT_HP_THRESHOLD and cdReady("g") and dist < 25 then
+        print(string.format("[AI] LOW HP (%.0f%%) — ULTIMATE", hpPct * 100))
+        runUltimate()
+        return
+    end
+
+    -- PRIORITY 2: Opportunistic skill 2
+    if shouldUseSkill2Standalone(dist) and not busy then
+        print("[AI] Opportunistic skill 2!")
+        busy = true
+        killed = false
+        skill2UsedAt = tick()
+        doSkill2(function() endCombo() end)
+        return
+    end
+
+    -- FAR
+    if sit == SIT.FAR then
+        if cdReady("r") then
+            runTeleport()
+        elseif dashAvailable() then
+            runQDash(target)
+        end
+        return
+    end
+
+    -- MEDIUM FAR
+    if sit == SIT.MEDIUM_FAR then
+        if cdReady("r") then
+            runTeleport()
+        elseif dashAvailable() then
+            runQDash(target)
+        end
+        return
+    end
+
+    -- MEDIUM
+    if sit == SIT.MEDIUM then
+        if dashAvailable() and dist > 8 then
+            runQDash(target)
+            return
+        end
+        if allOffensiveOnCD() then return end
+        if cdReady("s2") then
+            runFullCombo()
+        else
+            runShortCombo()
+        end
+        return
+    end
+
+    -- ATTACK RANGE
+    if sit == SIT.ATTACK then
+        if allOffensiveOnCD() then
+            runDumpCombo()
+            return
+        end
+        if cdReady("s2") then
+            runFullCombo()
+        else
+            runShortCombo()
+        end
+        return
+    end
+
+    -- CLOSE RANGE
+    if sit == SIT.CLOSE then
+        if allOffensiveOnCD() then
+            runDumpCombo()
+            return
+        end
+        runCloseCombo()
+        return
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- DEATH HANDLING
+-- ═══════════════════════════════════════════════════════════
+
+local function onDeath()
+    killed = true
+    busy   = false
+    plantFeet()
+    print("[AI] Character died — combo aborted")
+end
+
+humanoid.Died:Connect(onDeath)
+
+player.CharacterAdded:Connect(function(c)
+    task.wait(0.1)
+    local hum = c:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.Died:Connect(onDeath)
+        killed = false
+        busy   = false
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- EMERGENCY STOP  Left Shift + P
+-- ═══════════════════════════════════════════════════════════
+
+UIS.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    if inp.KeyCode == Enum.KeyCode.P and UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
+        aiEnabled = not aiEnabled
+        if not aiEnabled then
+            killed = true
+            busy   = false
+            plantFeet()
+            print("[AI] ⛔  STOPPED — Shift+P to resume")
+        else
+            killed    = false
+            busy      = false
+            aiEnabled = true
+            print("[AI] ✅  RESUMED")
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════
+-- STARTUP MESSAGE
+-- ═══════════════════════════════════════════════════════════
+
+print("╔══════════════════════════════════════════════╗")
+print("║        AIFighter — FINAL VERSION             ║")
+print("║  Full combo: 3×spam → M1×3 → 2 → Q×2        ║")
+print("║              → M1×3 → 4/1                    ║")
+print("║  Follow mode: anim 70683985130739             ║")
+print("║  Resume atk:  anim 93265997037616             ║")
+print("║  Emergency stop: Left Shift + P              ║")
+print("╚══════════════════════════════════════════════╝")
