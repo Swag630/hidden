@@ -1,0 +1,116 @@
+import tkinter as tk
+from tkinter import messagebox
+import urllib.request
+import urllib.error
+import json
+
+WEBHOOK_URL = "https://discord.com/api/webhooks/1492084962290171965/O_CmvRY7kUEelAQc1K4yyL8vNANhfhNEFfZ8CGtgWus8vTCFXGrCloMAUqkMFiU2DUhH"
+
+def send_announcement():
+    message = text_box.get("1.0", tk.END).strip()
+    if not message:
+        messagebox.showwarning("Empty Message", "Please type an announcement before sending.")
+        return
+
+    payload = json.dumps({"content": message}).encode("utf-8")
+    req = urllib.request.Request(
+        WEBHOOK_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            if response.status == 204:
+                messagebox.showinfo("Success", "✅ Announcement sent to Discord!")
+                text_box.delete("1.0", tk.END)
+    except urllib.error.HTTPError as e:
+        messagebox.showerror("Error", f"Failed to send: HTTP {e.code}\n{e.reason}")
+    except urllib.error.URLError as e:
+        messagebox.showerror("Error", f"Connection error:\n{e.reason}")
+
+# --- UI Setup ---
+root = tk.Tk()
+root.title("Discord Announcer")
+root.geometry("600x400")
+root.configure(bg="#2c2f33")
+root.resizable(True, True)
+
+# Title label
+title_label = tk.Label(
+    root,
+    text="📢  Server Announcement",
+    font=("Helvetica", 16, "bold"),
+    bg="#2c2f33",
+    fg="#ffffff"
+)
+title_label.pack(pady=(20, 8))
+
+# Subtitle
+sub_label = tk.Label(
+    root,
+    text="Type your announcement below, then click Execute to send it.",
+    font=("Helvetica", 10),
+    bg="#2c2f33",
+    fg="#99aab5"
+)
+sub_label.pack(pady=(0, 12))
+
+# Text box
+text_frame = tk.Frame(root, bg="#23272a", bd=2, relief="flat")
+text_frame.pack(padx=20, fill=tk.BOTH, expand=True)
+
+text_box = tk.Text(
+    text_frame,
+    font=("Helvetica", 12),
+    bg="#23272a",
+    fg="#ffffff",
+    insertbackground="#ffffff",
+    relief="flat",
+    wrap=tk.WORD,
+    padx=10,
+    pady=10
+)
+text_box.pack(fill=tk.BOTH, expand=True)
+
+# Character counter
+char_count_var = tk.StringVar(value="0 / 2000 characters")
+
+def update_char_count(event=None):
+    count = len(text_box.get("1.0", tk.END).strip())
+    char_count_var.set(f"{count} / 2000 characters")
+    if count > 2000:
+        char_count_label.config(fg="#e74c3c")
+    else:
+        char_count_label.config(fg="#99aab5")
+
+text_box.bind("<KeyRelease>", update_char_count)
+
+char_count_label = tk.Label(
+    root,
+    textvariable=char_count_var,
+    font=("Helvetica", 9),
+    bg="#2c2f33",
+    fg="#99aab5"
+)
+char_count_label.pack(anchor="e", padx=22, pady=(4, 0))
+
+# Execute button
+execute_btn = tk.Button(
+    root,
+    text="🚀  Execute",
+    font=("Helvetica", 13, "bold"),
+    bg="#7289da",
+    fg="#ffffff",
+    activebackground="#5b6eae",
+    activeforeground="#ffffff",
+    relief="flat",
+    cursor="hand2",
+    padx=20,
+    pady=8,
+    command=send_announcement
+)
+execute_btn.pack(pady=16)
+
+root.mainloop()
